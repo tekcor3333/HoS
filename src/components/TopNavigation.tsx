@@ -1,0 +1,186 @@
+import React from 'react';
+import { Plus, Download, RotateCcw, Calendar, Maximize2 } from 'lucide-react';
+import { CelestialThemeToggle } from './CelestialThemeToggle';
+import { useAuth } from '../utils/authContext';
+
+interface TopNavigationProps {
+  onAddHabit: () => void;
+  onExport: () => void;
+  onReset: () => void;
+  currentMonthName: string;
+  currentYear: number;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
+  onOpenShowcase?: () => void;
+  onOpenJoin?: () => void;
+}
+
+export const TopNavigation: React.FC<TopNavigationProps> = ({
+  onAddHabit,
+  onExport,
+  onReset,
+  currentMonthName,
+  currentYear,
+  isDarkMode = false,
+  onToggleDarkMode,
+  onOpenShowcase,
+  onOpenJoin,
+}) => {
+  const { user, isAuthenticated } = useAuth();
+
+  return (
+    <header className="sticky top-4 z-40 px-4 sm:px-6 lg:px-8 max-w-[min(90vw,1390px)] w-full mx-auto mb-6">
+      {/* The Tourera Signature Floating Translucent Glass Bar matching uploaded image.png */}
+      <div className="tourera-floating-bar rounded-full h-14 w-full px-4 sm:px-6 flex items-center justify-between text-slate-900 dark:text-white">
+        
+        {/* Zone 1: Brand & Logo (Tourera Hex-Loop Style) */}
+        <div className="flex items-center gap-4 shrink-0">
+          <a
+            href="#"
+            className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold tracking-tight hover:opacity-90 transition-opacity"
+          >
+            <div className="w-[30px] h-[30px] rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-950 flex items-center justify-center font-black text-sm shadow-sm shrink-0">
+              <svg viewBox="0 0 24 24" className="w-[20px] h-[20px] fill-white dark:fill-slate-950">
+                <path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 3.2L18.5 9 12 12.8 5.5 9 12 5.2zm-7 5.3l6 3.5v6.8l-6-3.4v-6.9zm14 6.9l-6 3.4v-6.8l6-3.5v6.9z"/>
+              </svg>
+            </div>
+            <div className="flex flex-col items-center leading-none">
+              <span
+                className="text-[22px] font-bold text-slate-950 dark:text-white whitespace-nowrap no-underline transition-all leading-none"
+                style={{
+                  fontFamily: '"Bodoni Moda", "Playfair Display", "DM Serif Display", "Times New Roman", serif',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                HoS
+              </span>
+            </div>
+          </a>
+
+          <div className="h-4 w-px bg-slate-300 dark:bg-white/20 hidden md:block shrink-0" />
+
+          {/* Month Indicator with fixed width so changing months never resizes or shifts the bar */}
+          <span className="text-xs text-slate-600 dark:text-white/70 font-medium hidden sm:inline-flex items-center gap-1.5 w-32 shrink-0">
+            <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-white/60 shrink-0" />
+            <span className="text-slate-900 dark:text-white font-semibold truncate">{currentMonthName} {currentYear}</span>
+          </span>
+        </div>
+
+        {/* Zone 2: Navigation Links (matching CSS 1 specs: font-size: 12px; line-height: 11px; font-family: system-ui; font-weight: bold) */}
+        <nav
+          className="hidden md:flex items-center gap-5 text-slate-700 dark:text-white/80 font-bold"
+          style={{
+            fontSize: '12px',
+            lineHeight: '11px',
+            fontFamily: 'system-ui',
+            fontWeight: 'bold',
+            fontStyle: 'normal',
+            textDecorationLine: 'none',
+          }}
+        >
+          <a href="#overview" className="hover:text-slate-950 dark:hover:text-white transition-colors">
+            Overview
+          </a>
+          <a href="#daily-checkin" className="hover:text-slate-950 dark:hover:text-white transition-colors">
+            Check-In
+          </a>
+          <a href="#monthly-grid" className="hover:text-slate-950 dark:hover:text-white transition-colors">
+            Grid
+          </a>
+          <a href="#weekly-summary" className="hover:text-slate-950 dark:hover:text-white transition-colors">
+            Weekly
+          </a>
+          <a href="#habit-analysis" className="hover:text-slate-950 dark:hover:text-white transition-colors">
+            Analysis
+          </a>
+          <a href="#goals" className="hover:text-slate-950 dark:hover:text-white transition-colors">
+            Goals
+          </a>
+          <a href="#history" className="hover:text-slate-950 dark:hover:text-white transition-colors">
+            History
+          </a>
+        </nav>
+
+        {/* Zone 3: Actions & Celestial Solar-Lunar Theme Switch */}
+        <div className="flex items-center gap-3">
+          {/* Faithful reproduction of the video's Celestial Molten Plasma Theme Toggle */}
+          <div className="hidden sm:flex items-center gap-1.5">
+            <CelestialThemeToggle
+              isDarkMode={isDarkMode}
+              onToggle={onToggleDarkMode || (() => {})}
+              size="sm"
+            />
+            {onOpenShowcase && (
+              <button
+                type="button"
+                onClick={onOpenShowcase}
+                title="Open Fullscreen Celestial Switch Studio"
+                className="p-1.5 text-slate-500 hover:text-slate-950 dark:text-white/60 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <Maximize2 className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={onReset}
+            title="Reset sample data"
+            className="p-2 text-slate-600 hover:text-slate-950 dark:text-white/70 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer hidden lg:flex items-center"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={onExport}
+            title="Export data as JSON"
+            className="p-2 text-slate-600 hover:text-slate-950 dark:text-white/70 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer hidden lg:flex items-center"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Join / Authenticated User Profile Button */}
+          {isAuthenticated && user ? (
+            <button
+              onClick={onOpenJoin}
+              title={`Logged in as ${user.name} (${user.email}) - Click to manage account`}
+              className="tourera-pill-btn-white rounded-full px-3 py-1.5 flex items-center justify-center gap-2 cursor-pointer font-medium shadow-sm transition-all"
+              style={{
+                height: '41.6px',
+                minWidth: '81.35px',
+              }}
+            >
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-5 h-5 rounded-full object-cover border border-slate-300 dark:border-white/30 shrink-0"
+                />
+              ) : (
+                <div className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="text-xs font-bold truncate max-w-[80px]">
+                {user.name.split(' ')[0]}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={onOpenJoin}
+              className="tourera-pill-btn-white rounded-full px-4 py-2 flex items-center justify-center gap-1.5 cursor-pointer font-bold"
+              style={{
+                width: '81.35px',
+                height: '41.6px',
+                fontSize: '15px',
+                lineHeight: '14px',
+                fontFamily: 'Times New Roman',
+              }}
+            >
+              <span>Join</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+};

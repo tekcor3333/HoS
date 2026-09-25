@@ -1,0 +1,6 @@
+{
+  "name": "My Habit Tracker",
+  "description": "A modern, visually clean Notion-inspired habit tracker dashboard with automatic progress calculations, streaks, and monthly analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
