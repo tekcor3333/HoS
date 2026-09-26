@@ -370,22 +370,6 @@ export default function App() {
     );
   }
 
-  // 3. Unauthenticated State: Render the existing Liquid Glass signup/login UI
-  if (!isAuthenticated) {
-    return (
-      <JoinLiquidGlassModal
-        isOpen={true}
-        onClose={() => {}}
-        isFullPage={true}
-        onSuccess={(u) =>
-          showToast(
-            `Welcome to HabitOS, ${typeof u === 'object' && u ? u.name || u.email : u}!`
-          )
-        }
-      />
-    );
-  }
-
   return (
     <div
       className={`min-h-screen relative flex flex-col transition-colors duration-500 bg-transparent overflow-x-hidden ${
@@ -446,7 +430,7 @@ export default function App() {
         />
 
         {/* Main Content Viewport */}
-        <main className="relative z-10 flex-1 max-w-[min(90vw,1390px)] w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <main className="relative z-10 flex-1 max-w-[min(90vw,1390px)] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-8">
           {/* Toast Alert */}
           {toastMessage && (
             <div className="fixed bottom-20 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-3 border border-white/20">

@@ -187,6 +187,8 @@ export const JoinLiquidGlassModal: React.FC<JoinLiquidGlassModalProps> = ({
     }, 1500);
   };
 
+  if (!isOpen) return null;
+
   return (
     <div
       role="dialog"
@@ -256,8 +258,19 @@ export const JoinLiquidGlassModal: React.FC<JoinLiquidGlassModalProps> = ({
           </div>
         </div>
 
-        {/* Close button if rendered as a modal overlay on top of dashboard */}
-        {!isFullPage && (
+        {/* Close & Return to Dashboard action */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white/90 hover:text-white text-xs font-semibold transition-all cursor-pointer backdrop-blur-md flex items-center gap-1.5"
+            title="Open HabitOS Inner Dashboard"
+          >
+            <span>Open Dashboard</span>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
           <button
             type="button"
             onClick={onClose}
@@ -269,7 +282,7 @@ export const JoinLiquidGlassModal: React.FC<JoinLiquidGlassModalProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-        )}
+        </div>
       </header>
 
       {/* Main Glass Widget Centerpiece */}
@@ -373,7 +386,7 @@ export const JoinLiquidGlassModal: React.FC<JoinLiquidGlassModalProps> = ({
                   {mode === 'signin' ? 'Sign in with email' : 'Create your account'}
                 </h2>
                 <p className="text-xs text-white/80 font-medium mt-1.5 leading-relaxed max-w-[280px] mx-auto drop-shadow-sm">
-                  Make a new doc to bring your words, data, and teams together. For free
+                  Track your habits, stay consistent, and reach your goals every day
                 </p>
               </div>
 
@@ -392,6 +405,9 @@ export const JoinLiquidGlassModal: React.FC<JoinLiquidGlassModalProps> = ({
                   <span className="leading-snug">{errorMessage}</span>
                 </div>
               )}
+
+              {/* Clerk Bot Protection CAPTCHA container */}
+              <div id="clerk-captcha" className="my-1 flex justify-center" />
 
               {/* Verification Code Form (if Clerk email verification required) */}
               {pendingVerification ? (
