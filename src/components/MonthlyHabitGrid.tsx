@@ -2,6 +2,7 @@ import React from 'react';
 import { Habit, DailyStat } from '../types';
 import { getDaysInMonth, getWeekGroups } from '../utils/dateUtils';
 import { Edit2, Trash2, Plus, Check } from 'lucide-react';
+import { DailyTaskProgressSection } from './DailyTaskProgressSection';
 
 interface MonthlyHabitGridProps {
   habits: Habit[];
@@ -372,13 +373,13 @@ export const MonthlyHabitGrid: React.FC<MonthlyHabitGridProps> = ({
             >
               <defs>
                 <linearGradient id="toureraTrendGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.22" />
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.24" />
                   <stop offset="100%" stopColor="currentColor" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
               {areaD && (
-                <path d={areaD} fill="url(#toureraTrendGradient)" className="text-slate-900 dark:text-white" />
+                <path d={areaD} fill="url(#toureraTrendGradient)" className="text-slate-900 dark:text-[#f6da7e]" />
               )}
 
               {pathD && (
@@ -389,7 +390,7 @@ export const MonthlyHabitGrid: React.FC<MonthlyHabitGridProps> = ({
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="text-slate-900 dark:text-white"
+                  className="text-slate-900 dark:text-[#f6da7e]"
                 />
               )}
 
@@ -401,8 +402,8 @@ export const MonthlyHabitGrid: React.FC<MonthlyHabitGridProps> = ({
                   r={pt.day === todayDay ? 4.5 : 2.5}
                   className={
                     pt.day === todayDay
-                      ? 'fill-slate-950 dark:fill-white stroke-2 stroke-white dark:stroke-slate-900'
-                      : 'fill-slate-700 dark:fill-slate-300'
+                      ? 'fill-slate-950 dark:fill-[#f6da7e] stroke-2 stroke-white dark:stroke-[#0c0d11]'
+                      : 'fill-slate-700 dark:fill-[#ecd06c]'
                   }
                 >
                   <title>{`Day ${pt.day}: ${pt.percentage}%`}</title>
@@ -419,6 +420,18 @@ export const MonthlyHabitGrid: React.FC<MonthlyHabitGridProps> = ({
           </div>
         </div>
       </div>
+
+      {/* NEW DAILY TASK + PROGRESS SECTION (Directly after Habit Grid & Graph) */}
+      <DailyTaskProgressSection
+        habits={habits}
+        checks={checks}
+        dailyStats={dailyStats}
+        year={year}
+        month={month}
+        monthName={monthName}
+        onToggleCheck={onToggleCheck}
+        todayDate={todayDate}
+      />
     </section>
   );
 };

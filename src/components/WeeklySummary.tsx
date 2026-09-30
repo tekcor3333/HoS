@@ -19,10 +19,13 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ weeklyStats }) => 
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         {weeklyStats.map((week) => {
+          const isHighVelocity = week.percentage >= 75;
           return (
             <div
               key={week.weekNumber}
-              className="tourera-glass-card rounded-3xl p-5 flex flex-col justify-between"
+              className={`tourera-glass-card rounded-3xl p-5 flex flex-col justify-between transition-all ${
+                isHighVelocity ? 'ring-1 ring-slate-900/10 dark:ring-white/25' : ''
+              }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-2">

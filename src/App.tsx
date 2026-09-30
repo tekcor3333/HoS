@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Habit, MonthData, MonthlyGoals } from './types';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Habit, MonthData, MonthlyGoals, AppView, TabOriginRect } from './types';
 import { MONTH_NAMES, getDaysInMonth } from './utils/dateUtils';
 import {
   loadMonthData,
@@ -25,9 +25,45 @@ import { HabitModal } from './components/HabitModal';
 import { CelestialSwitchShowcaseModal } from './components/CelestialSwitchShowcaseModal';
 import { JoinLiquidGlassModal } from './components/JoinLiquidGlassModal';
 import { LiquidGlassScrollRail } from './components/LiquidGlassScrollRail';
-import { Check } from 'lucide-react';
+import { MobileBottomDock } from './components/MobileBottomDock';
+import { DailyTaskProgressSection } from './components/DailyTaskProgressSection';
+import { Check, ArrowUpRight } from 'lucide-react';
 import fixedMountainBackdrop from './assets/sky-mountains-black-clouds-wallpaper-preview.jpg';
 import { useAuth, AuthenticateWithRedirectCallback } from './utils/authContext';
+
+const VALID_VIEWS: AppView[] = [
+  'overview',
+  'check-in',
+  'tasks',
+  'grid',
+  'weekly',
+  'analysis',
+  'goals',
+  'history',
+];
+
+function getViewFromUrl(): AppView {
+  if (typeof window === 'undefined') return 'overview';
+
+  // Check pathname: /check-in, /tasks, /grid, /weekly, /analysis, /goals, /history
+  const path = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+  if (VALID_VIEWS.includes(path as AppView)) {
+    return path as AppView;
+  }
+
+  // Check hash fallback: #check-in, #daily-checkin, #tasks, #task-bar, #grid, #monthly-grid, etc.
+  const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+  if (hash === 'daily-checkin') return 'check-in';
+  if (hash === 'tasks' || hash === 'task-bar' || hash === 'daily-tasks') return 'tasks';
+  if (hash === 'monthly-grid') return 'grid';
+  if (hash === 'weekly-summary') return 'weekly';
+  if (hash === 'habit-analysis') return 'analysis';
+  if (VALID_VIEWS.includes(hash as AppView)) {
+    return hash as AppView;
+  }
+
+  return 'overview';
+}
 
 // SSO Redirect Callback Component that guarantees redirection back to HabitOS home
 const SSOCallbackHandler: React.FC = () => {
@@ -105,6 +141,249 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('habitos_theme') === 'dark';
   });
+
+  // Internal App-Style View State & macOS Shared-Element App-Opening Spatial Transitions
+  const [activeView, setActiveView] = useState<AppView>(() => getViewFromUrl());
+  const [displayedView, setDisplayedView] = useState<AppView>(() => getViewFromUrl());
+  const [transitionPhase, setTransitionPhase] = useState<'idle' | 'exiting' | 'entering'>('idle');
+  const scrollPositions = useRef<Record<string, number>>({});
+  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeViewRef = useRef<AppView>(activeView);
+  const viewContainerRef = useRef<HTMLDivElement>(null);
+  const activeAnimationsRef = useRef<Animation[]>([]);
+
+  useEffect(() => {
+    activeViewRef.current = activeView;
+  }, [activeView]);
+
+  const performTransitionTo = useCallback(
+    (targetView: AppView, originRectParam?: DOMRect | TabOriginRect) => {
+      // 1. Cancel any active running Web Animations
+      activeAnimationsRef.current.forEach((anim) => {
+        try {
+          anim.cancel();
+        } catch {
+          // ignore
+        }
+      });
+      activeAnimationsRef.current = [];
+
+      if (transitionTimerRef.current) {
+        clearTimeout(transitionTimerRef.current);
+        transitionTimerRef.current = null;
+      }
+
+      // 2. Preserve scroll position of outgoing view
+      if (typeof window !== 'undefined') {
+        scrollPositions.current[displayedView] = window.scrollY || window.pageYOffset || 0;
+      }
+
+      // 3. Resolve exact origin coordinates & dimensions
+      let originRect = originRectParam;
+      const targetNavElement = typeof document !== 'undefined'
+        ? (document.querySelector(`[data-nav-tab="${targetView}"]`) as HTMLElement | null)
+        : null;
+
+      if (!originRect && targetNavElement) {
+        originRect = targetNavElement.getBoundingClientRect();
+      }
+
+      // Highlight the clicked/destination tab with a subtle macOS tactile bloom
+      if (targetNavElement) {
+        targetNavElement.classList.remove('mac-tab-origin-pulse');
+        void targetNavElement.offsetWidth; // trigger reflow for clean restart
+        targetNavElement.classList.add('mac-tab-origin-pulse');
+        setTimeout(() => {
+          targetNavElement.classList.remove('mac-tab-origin-pulse');
+        }, 450);
+      }
+
+      const container = viewContainerRef.current;
+      const containerRect = container ? container.getBoundingClientRect() : null;
+
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      setActiveView(targetView);
+      setTransitionPhase('exiting');
+
+      // 4. Spatial geometry calculations
+      const tabCenterX = originRect
+        ? originRect.left + originRect.width / 2
+        : typeof window !== 'undefined'
+        ? window.innerWidth / 2
+        : 600;
+      const tabCenterY = originRect
+        ? originRect.top + originRect.height / 2
+        : 32;
+
+      const containerWidth = containerRect
+        ? containerRect.width
+        : typeof window !== 'undefined'
+        ? window.innerWidth * 0.9
+        : 1000;
+      const viewCenterX = containerRect
+        ? containerRect.left + containerRect.width / 2
+        : typeof window !== 'undefined'
+        ? window.innerWidth / 2
+        : 600;
+
+      const visibleTop = Math.max(containerRect ? containerRect.top : 80, 0);
+      const visibleBottom = Math.min(
+        containerRect ? containerRect.bottom : (typeof window !== 'undefined' ? window.innerHeight : 800),
+        typeof window !== 'undefined' ? window.innerHeight : 800
+      );
+      const viewCenterY = (visibleTop + visibleBottom) / 2;
+
+      const deltaX = Math.round(tabCenterX - viewCenterX);
+      const deltaY = Math.round(tabCenterY - viewCenterY);
+      const startScale = Math.max(
+        0.12,
+        Math.min(0.24, ((originRect?.width || 75) * 1.7) / containerWidth)
+      );
+
+      // Reduced motion: graceful subtle fade
+      if (prefersReducedMotion || !container || typeof container.animate !== 'function') {
+        transitionTimerRef.current = setTimeout(() => {
+          setDisplayedView(targetView);
+          setTransitionPhase('entering');
+          if (typeof window !== 'undefined') {
+            window.scrollTo({
+              top: scrollPositions.current[targetView] ?? 0,
+              behavior: 'instant' as ScrollBehavior,
+            });
+          }
+          transitionTimerRef.current = setTimeout(() => {
+            setTransitionPhase('idle');
+            transitionTimerRef.current = null;
+          }, 150);
+        }, 120);
+        return;
+      }
+
+      // 5. Phase 1: Outgoing interface collapses/leans toward destination tab (140ms)
+      const exitAnim = container.animate(
+        [
+          {
+            transform: 'translate3d(0, 0, 0) scale(1)',
+            opacity: 1,
+            filter: 'blur(0px)',
+          },
+          {
+            transform: `translate3d(${deltaX * 0.08}px, ${deltaY * 0.08}px, 0) scale(0.95)`,
+            opacity: 0,
+            filter: 'blur(4px)',
+          },
+        ],
+        {
+          duration: 140,
+          easing: 'cubic-bezier(0.3, 0, 0.7, 0.15)',
+          fill: 'forwards',
+        }
+      );
+      activeAnimationsRef.current.push(exitAnim);
+
+      transitionTimerRef.current = setTimeout(() => {
+        setDisplayedView(targetView);
+        setTransitionPhase('entering');
+
+        // Restore scroll position or start at top (0)
+        if (typeof window !== 'undefined') {
+          const savedScroll = scrollPositions.current[targetView] ?? 0;
+          window.scrollTo({
+            top: savedScroll,
+            behavior: 'instant' as ScrollBehavior,
+          });
+        }
+
+        // 6. Phase 2: Incoming interface expands outward from the clicked tab (400ms)
+        requestAnimationFrame(() => {
+          const targetContainer = viewContainerRef.current;
+          if (!targetContainer || typeof targetContainer.animate !== 'function') {
+            setTransitionPhase('idle');
+            return;
+          }
+
+          const enterAnim = targetContainer.animate(
+            [
+              {
+                transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(${startScale})`,
+                opacity: 0,
+                filter: 'blur(8px)',
+                borderRadius: '34px',
+                boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.5), 0 0 0 1.5px rgba(255, 255, 255, 0.35)',
+              },
+              {
+                opacity: 0.9,
+                filter: 'blur(2px)',
+                offset: 0.24,
+              },
+              {
+                transform: 'translate3d(0, 0, 0) scale(1)',
+                opacity: 1,
+                filter: 'blur(0px)',
+                borderRadius: '0px',
+                boxShadow: '0 0 0 0 rgba(0, 0, 0, 0)',
+              },
+            ],
+            {
+              duration: 400,
+              easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+              fill: 'forwards',
+            }
+          );
+
+          activeAnimationsRef.current.push(enterAnim);
+
+          enterAnim.onfinish = () => {
+            try {
+              enterAnim.cancel(); // Clears forced inline keyframe styles so natural layout rules take over
+            } catch {
+              // ignore
+            }
+            setTransitionPhase('idle');
+            transitionTimerRef.current = null;
+          };
+        });
+      }, 135);
+    },
+    [displayedView]
+  );
+
+  const handleNavigate = useCallback(
+    (view: AppView, originRect?: DOMRect | TabOriginRect) => {
+      if (view === activeView && transitionPhase === 'idle') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // Clean SPA routing without full page reload
+      const targetPath = view === 'overview' ? '/' : `/${view}`;
+      if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
+        window.history.pushState({ view }, '', targetPath);
+      }
+
+      performTransitionTo(view, originRect);
+    },
+    [activeView, transitionPhase, performTransitionTo]
+  );
+
+  // Synchronize on browser Back / Forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlView = getViewFromUrl();
+      if (urlView !== activeViewRef.current) {
+        // Find destination tab rect in DOM for spatial continuity
+        const destTab = document.querySelector(`[data-nav-tab="${urlView}"]`) as HTMLElement | null;
+        const rect = destTab ? destTab.getBoundingClientRect() : undefined;
+        performTransitionTo(urlView, rect);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [performTransitionTo]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -373,7 +652,7 @@ export default function App() {
   return (
     <div
       className={`min-h-screen relative flex flex-col transition-colors duration-500 bg-transparent overflow-x-hidden ${
-        isDarkMode ? 'text-slate-100' : 'text-slate-900'
+        isDarkMode ? 'text-white' : 'text-slate-900'
       } selection:bg-slate-900 selection:text-white`}
     >
       {/* 1. COMPLETELY FIXED IMAGE BACKDROP — Attached to viewport, stationary during scrolling */}
@@ -403,10 +682,10 @@ export default function App() {
           }}
         />
 
-        {/* 2. ATMOSPHERIC OVERLAY — Soft dark/light mood filter (Pure image, no square lining graph) */}
+        {/* 2. ATMOSPHERIC OVERLAY — Soft dark/light mood filter with Littlebird warm champagne-amber zenith aura in Dark Mode */}
         <div
-          className={`absolute inset-0 transition-colors duration-500 ${
-            isDarkMode ? 'bg-slate-950/45' : 'bg-slate-200/35'
+          className={`absolute inset-0 transition-all duration-700 ${
+            isDarkMode ? 'littlebird-golden-aura opacity-95' : 'bg-slate-200/35 opacity-100'
           }`}
         />
       </div>
@@ -415,6 +694,8 @@ export default function App() {
       <div className="relative z-10 flex flex-col flex-1">
         {/* Tourera Signature Floating Pill Top Navigation */}
         <TopNavigation
+          activeView={activeView}
+          onNavigate={handleNavigate}
           onAddHabit={() => {
             setHabitToEdit(null);
             setIsModalOpen(true);
@@ -430,7 +711,7 @@ export default function App() {
         />
 
         {/* Main Content Viewport */}
-        <main className="relative z-10 flex-1 max-w-[min(90vw,1390px)] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-8">
+        <main className="relative z-10 flex-1 max-w-[min(90vw,1390px)] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-16 md:pb-8">
           {/* Toast Alert */}
           {toastMessage && (
             <div className="fixed bottom-20 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-3 border border-white/20">
@@ -441,78 +722,271 @@ export default function App() {
             </div>
           )}
 
-          {/* 1. Monthly Overview Header, Slider Pill & Month Switcher */}
-          <MonthlyOverview
-            year={year}
-            month={month}
-            stats={overallStats}
-            onMonthChange={setMonth}
-            onYearChange={setYear}
-            onDuplicateMonth={handleDuplicateMonth}
-          />
+          {/* Internal App-Style View Container with macOS Dock Opening Animation */}
+          <div
+            ref={viewContainerRef}
+            key={displayedView}
+            className="habitos-app-view-container"
+          >
+            {/* 1. OVERVIEW VIEW */}
+            {displayedView === 'overview' && (
+              <div className="space-y-6">
+                <MonthlyOverview
+                  year={year}
+                  month={month}
+                  stats={overallStats}
+                  onMonthChange={setMonth}
+                  onYearChange={setYear}
+                  onDuplicateMonth={handleDuplicateMonth}
+                />
 
-          {/* 2. Progress Dashboard (High-contrast metrics cards) */}
-          <ProgressDashboard
-            year={year}
-            month={month}
-            stats={overallStats}
-          />
+                <ProgressDashboard
+                  year={year}
+                  month={month}
+                  stats={overallStats}
+                />
 
-          {/* 3. Daily Check-In (Tourera circular gauge & 1-click completion) */}
-          <DailyCheckIn
-            habits={monthData.habits}
-            checks={monthData.checks}
-            year={year}
-            month={month}
-            onToggleCheck={handleToggleCheck}
-            onBatchToggle={handleBatchToggle}
-            todayDate={todayDate}
-          />
+                {/* Quick App Launch Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 pt-1">
+                  <button
+                    type="button"
+                    data-nav-tab="check-in"
+                    onClick={(e) => handleNavigate('check-in', e.currentTarget.getBoundingClientRect())}
+                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
+                        ✓
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">Daily Check-In</div>
+                    <div className="text-[11px] text-slate-500 dark:text-white/60 mt-0.5 truncate">
+                      1-click completion
+                    </div>
+                  </button>
 
-          {/* 4. Monthly Habit Grid (Centerpiece transparent glass sheet & line trend chart) */}
-          <MonthlyHabitGrid
-            habits={monthData.habits}
-            checks={monthData.checks}
-            dailyStats={dailyStats}
-            year={year}
-            month={month}
-            monthName={monthName}
-            onToggleCheck={handleToggleCheck}
-            onEditHabit={(h) => {
-              setHabitToEdit(h);
-              setIsModalOpen(true);
-            }}
-            onDeleteHabit={handleDeleteHabit}
-            onAddHabit={() => {
-              setHabitToEdit(null);
-              setIsModalOpen(true);
-            }}
-            todayDate={todayDate}
-          />
+                  <button
+                    type="button"
+                    data-nav-tab="tasks"
+                    onClick={(e) => handleNavigate('tasks', e.currentTarget.getBoundingClientRect())}
+                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
+                        📋
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">Task Bar</div>
+                    <div className="text-[11px] text-slate-500 dark:text-white/60 mt-0.5 truncate">
+                      Daily tasks & rings
+                    </div>
+                  </button>
 
-          {/* 5. Weekly Summary (Week 1 to Week 5 cards) */}
-          <WeeklySummary weeklyStats={weeklyStats} />
+                  <button
+                    type="button"
+                    data-nav-tab="grid"
+                    onClick={(e) => handleNavigate('grid', e.currentTarget.getBoundingClientRect())}
+                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
+                        ⊞
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">Habit Grid</div>
+                    <div className="text-[11px] text-slate-500 dark:text-white/60 mt-0.5 truncate">
+                      {monthData.habits.length} habits · {daysInMonth}d
+                    </div>
+                  </button>
 
-          {/* 6. Habit Analysis Database Table */}
-          <HabitAnalysis habitStats={habitStatsList} />
+                  <button
+                    type="button"
+                    data-nav-tab="weekly"
+                    onClick={(e) => handleNavigate('weekly', e.currentTarget.getBoundingClientRect())}
+                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
+                        📅
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">Weekly Summary</div>
+                    <div className="text-[11px] text-slate-500 dark:text-white/60 mt-0.5 truncate">
+                      Week 1 to Week 5
+                    </div>
+                  </button>
 
-          {/* 7. Goals Section */}
-          <GoalsSection
-            goals={monthData.goals}
-            stats={overallStats}
-            onUpdateGoals={handleUpdateGoals}
-            monthName={monthName}
-            year={year}
-          />
+                  <button
+                    type="button"
+                    data-nav-tab="analysis"
+                    onClick={(e) => handleNavigate('analysis', e.currentTarget.getBoundingClientRect())}
+                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
+                        📊
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">Analysis</div>
+                    <div className="text-[11px] text-slate-500 dark:text-white/60 mt-0.5 truncate">
+                      Consistency stats
+                    </div>
+                  </button>
 
-          {/* 8. Monthly History & Archives */}
-          <MonthlyHistory
-            currentYear={year}
-            currentMonth={month}
-            onSelectMonth={setMonth}
-            onCloneToMonth={handleCloneToSpecificMonth}
-          />
+                  <button
+                    type="button"
+                    data-nav-tab="goals"
+                    onClick={(e) => handleNavigate('goals', e.currentTarget.getBoundingClientRect())}
+                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
+                        🎯
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">Goals</div>
+                    <div className="text-[11px] text-slate-500 dark:text-white/60 mt-0.5 truncate">
+                      Target: {monthData.goals?.targetPercentage ?? 80}%
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-nav-tab="history"
+                    onClick={(e) => handleNavigate('history', e.currentTarget.getBoundingClientRect())}
+                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
+                        📜
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">History</div>
+                    <div className="text-[11px] text-slate-500 dark:text-white/60 mt-0.5 truncate">
+                      Year {year} archives
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 2. CHECK-IN VIEW */}
+            {displayedView === 'check-in' && (
+              <div className="space-y-6">
+                <DailyCheckIn
+                  habits={monthData.habits}
+                  checks={monthData.checks}
+                  year={year}
+                  month={month}
+                  onToggleCheck={handleToggleCheck}
+                  onBatchToggle={handleBatchToggle}
+                  todayDate={todayDate}
+                />
+              </div>
+            )}
+
+            {/* 3. TASK BAR & DAILY TASKS VIEW (Opened from upper bar) */}
+            {displayedView === 'tasks' && (
+              <div className="space-y-6">
+                <DailyTaskProgressSection
+                  habits={monthData.habits}
+                  checks={monthData.checks}
+                  dailyStats={dailyStats}
+                  year={year}
+                  month={month}
+                  monthName={monthName}
+                  onToggleCheck={handleToggleCheck}
+                  todayDate={todayDate}
+                  standaloneView={true}
+                  onAddHabit={() => {
+                    setHabitToEdit(null);
+                    setIsModalOpen(true);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* 4. GRID VIEW */}
+            {displayedView === 'grid' && (
+              <div className="space-y-6">
+                <MonthlyHabitGrid
+                  habits={monthData.habits}
+                  checks={monthData.checks}
+                  dailyStats={dailyStats}
+                  year={year}
+                  month={month}
+                  monthName={monthName}
+                  onToggleCheck={handleToggleCheck}
+                  onEditHabit={(h) => {
+                    setHabitToEdit(h);
+                    setIsModalOpen(true);
+                  }}
+                  onDeleteHabit={handleDeleteHabit}
+                  onAddHabit={() => {
+                    setHabitToEdit(null);
+                    setIsModalOpen(true);
+                  }}
+                  todayDate={todayDate}
+                />
+              </div>
+            )}
+
+            {/* 4. WEEKLY VIEW */}
+            {displayedView === 'weekly' && (
+              <div className="space-y-6">
+                <WeeklySummary weeklyStats={weeklyStats} />
+              </div>
+            )}
+
+            {/* 5. ANALYSIS VIEW */}
+            {displayedView === 'analysis' && (
+              <div className="space-y-6">
+                <HabitAnalysis habitStats={habitStatsList} />
+              </div>
+            )}
+
+            {/* 6. GOALS VIEW */}
+            {displayedView === 'goals' && (
+              <div className="space-y-6">
+                <GoalsSection
+                  goals={monthData.goals}
+                  stats={overallStats}
+                  onUpdateGoals={handleUpdateGoals}
+                  monthName={monthName}
+                  year={year}
+                />
+              </div>
+            )}
+
+            {/* 7. HISTORY VIEW */}
+            {displayedView === 'history' && (
+              <div className="space-y-6">
+                <MonthlyHistory
+                  currentYear={year}
+                  currentMonth={month}
+                  onSelectMonth={(m) => {
+                    setMonth(m);
+                    showToast(`Switched to ${MONTH_NAMES[m - 1]} ${year}`);
+                  }}
+                  onCloneToMonth={handleCloneToSpecificMonth}
+                />
+              </div>
+            )}
+          </div>
         </main>
+
+        {/* Mobile Navigation Dock */}
+        <MobileBottomDock
+          activeView={displayedView}
+          onNavigate={handleNavigate}
+        />
 
         {/* Habit Create/Edit Modal */}
         <HabitModal
@@ -569,7 +1043,10 @@ export default function App() {
       </div>
 
       {/* Apple-Style Custom Liquid Glass Scroll Rail */}
-      <LiquidGlassScrollRail />
+      <LiquidGlassScrollRail
+        activeView={displayedView}
+        isTransitioning={transitionPhase !== 'idle'}
+      />
     </div>
   );
 }

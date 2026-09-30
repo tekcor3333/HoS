@@ -127,35 +127,35 @@ export const DailyCheckIn: React.FC<DailyCheckInProps> = ({
                 <button
                   key={dayNum}
                   onClick={() => setSelectedDay(dayNum)}
-                  className={`px-3.5 py-2 rounded-2xl text-center transition-all cursor-pointer flex flex-col items-center min-w-[56px] ${
+                  className={`px-3.5 py-2.5 rounded-2xl text-center transition-all cursor-pointer flex flex-col items-center min-w-[62px] relative overflow-hidden ${
                     isCurrent
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-950 shadow-md scale-102 font-bold'
-                      : 'bg-white/60 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 border border-white/80 dark:border-white/10'
+                      ? 'bg-slate-900 text-white dark:bg-[#1a1d26] dark:text-white dark:border dark:border-[#f6da7e] dark:shadow-[0_0_18px_rgba(246,218,126,0.25)] shadow-md scale-105 font-bold ring-2 ring-slate-900/20 dark:ring-0'
+                      : dCompleted > 0
+                      ? 'bg-white/70 dark:bg-[#161820]/90 text-slate-800 dark:text-white border border-slate-200/80 dark:border-[#f6da7e]/30 hover:border-slate-300 dark:hover:border-[#f6da7e]/50'
+                      : 'bg-white/50 dark:bg-[#12141a]/70 text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-[#181a22]/90 border border-slate-200/50 dark:border-white/10'
                   }`}
                 >
                   <span
-                    className={`text-[10px] uppercase font-bold tracking-wider ${
-                      isCurrent ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'
+                    className={`text-[9px] uppercase font-bold tracking-widest ${
+                      isCurrent ? 'text-slate-300 dark:text-[#f6da7e]' : 'text-slate-500 dark:text-slate-400'
                     }`}
                   >
                     {dInfo.shortName}
                   </span>
                   <span
                     className={`text-sm font-black font-mono mt-0.5 ${
-                      isCurrent ? 'text-white dark:text-slate-950' : 'text-slate-900 dark:text-white'
+                      isCurrent ? 'text-white dark:text-white' : 'text-slate-900 dark:text-white'
                     }`}
                   >
                     {dayNum}
                   </span>
-                  <div className="mt-1 flex items-center justify-center">
+                  <div className="mt-1.5 w-full flex items-center justify-center">
                     {dDone ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                    ) : dCompleted > 0 ? (
+                      <div className="w-4 h-1 rounded-full bg-slate-900 dark:bg-gradient-to-r dark:from-[#f6da7e] dark:to-[#fff0b5] dark:shadow-[0_0_8px_rgba(246,218,126,0.8)]" />
                     ) : (
-                      <span className={`text-[10px] font-mono leading-none ${
-                        isCurrent ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'
-                      }`}>
-                        {dCompleted}/{dAll}
-                      </span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-white/20" />
                     )}
                   </div>
                 </button>
@@ -193,7 +193,7 @@ export const DailyCheckIn: React.FC<DailyCheckInProps> = ({
                   cy="72"
                   r={radius}
                   stroke="currentColor"
-                  className="text-slate-900 dark:text-white transition-all duration-700 ease-out"
+                  className="text-slate-900 dark:text-[#f6da7e] transition-all duration-700 ease-out"
                   strokeWidth="8"
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
@@ -240,8 +240,8 @@ export const DailyCheckIn: React.FC<DailyCheckInProps> = ({
                     onClick={() => handleToggle(habit.id)}
                     className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer select-none ${
                       isChecked
-                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-950 border-slate-900 dark:border-white shadow-sm'
-                        : 'bg-white/60 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-slate-900 dark:text-white border-white/90 dark:border-white/10 shadow-2xs'
+                        ? 'bg-slate-900 dark:bg-[#1a1d26] text-white dark:text-white border-slate-900 dark:border-[#f6da7e]/70 shadow-sm dark:shadow-[0_0_16px_rgba(246,218,126,0.2)]'
+                        : 'bg-white/60 dark:bg-[#13151c]/70 hover:bg-white dark:hover:bg-[#1a1c24]/90 text-slate-900 dark:text-white border-white/90 dark:border-white/10 shadow-2xs'
                     }`}
                   >
                     <div className="flex items-center gap-3 truncate">
@@ -250,7 +250,7 @@ export const DailyCheckIn: React.FC<DailyCheckInProps> = ({
                         <span
                           className={`text-xs font-bold truncate block ${
                             isChecked
-                              ? 'line-through text-slate-300 dark:text-slate-600'
+                              ? 'line-through text-slate-300 dark:text-slate-500'
                               : 'text-slate-900 dark:text-white'
                           }`}
                         >
@@ -269,7 +269,7 @@ export const DailyCheckIn: React.FC<DailyCheckInProps> = ({
                     <div
                       className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
                         isChecked
-                          ? 'bg-white dark:bg-slate-900 text-slate-950 dark:text-white border-white dark:border-slate-800 font-bold'
+                          ? 'bg-white text-slate-950 dark:bg-gradient-to-br dark:from-[#f6da7e] dark:to-[#e6bf56] dark:text-[#0b0c10] border-white dark:border-[#f6da7e] font-bold dark:shadow-[0_0_10px_rgba(246,218,126,0.6)]'
                           : 'tourera-check-empty'
                       }`}
                     >

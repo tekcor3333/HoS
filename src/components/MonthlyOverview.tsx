@@ -191,30 +191,29 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
         </div>
       </div>
 
-      {/* 2. Hero Header Area */}
+      {/* 2. Hero Header Area (Matching reference screenshot typography hierarchy) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1
-            className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white"
+            className="text-3xl sm:text-5xl font-semibold tracking-tight text-slate-900 dark:text-white"
             style={{
-              height: '46px',
-              lineHeight: '30px',
+              fontFamily: '"Bodoni Moda", "Playfair Display", "Cinzel", "Newsreader", "DM Serif Display", Georgia, serif',
+              letterSpacing: '-0.02em',
             }}
           >
             My Habit Tracker
           </h1>
+          <p className="text-sm sm:text-base text-slate-600 dark:text-[#ecdab4] font-serif italic mt-1.5">
+            Build unbreakable daily rhythm. Even on the days you want to slow down.
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={onDuplicateMonth}
-            className="tourera-glass-card px-3.5 py-1.5 font-semibold text-xs text-slate-900 dark:text-white hover:bg-white/80 dark:hover:bg-white/20 border border-white/80 dark:border-white/15 shadow-xs rounded-full transition-all flex items-center justify-center gap-2 cursor-pointer hover:shadow-sm"
-            style={{
-              width: '116.199px',
-              height: '36.5875px',
-            }}
+            className="tourera-pill-btn-white px-4 py-2 font-bold text-xs text-slate-900 rounded-full transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
           >
-            <Copy className="w-3.5 h-3.5 text-slate-600 dark:text-slate-200 shrink-0" />
+            <Copy className="w-3.5 h-3.5 text-slate-700 dark:text-slate-800 shrink-0" />
             <span>Clone habits</span>
           </button>
         </div>
@@ -352,9 +351,9 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
             </div>
 
             {/* Specular Liquid Capsule Track */}
-            <div className="w-full h-4 bg-slate-200 dark:bg-black/40 rounded-full overflow-hidden p-0.5 border border-slate-300/40 dark:border-white/20 shadow-inner">
+            <div className="w-full h-4 bg-slate-200 dark:bg-black/60 rounded-full overflow-hidden p-0.5 border border-slate-300/40 dark:border-[#f6da7e]/30 shadow-inner">
               <div
-                className="h-full bg-slate-900 dark:bg-gradient-to-r dark:from-white dark:via-slate-100 dark:to-white rounded-full transition-all duration-700 ease-out shadow-sm"
+                className="h-full bg-slate-900 dark:bg-gradient-to-r dark:from-[#f6da7e] dark:via-[#fff1bd] dark:to-[#f6da7e] rounded-full transition-all duration-700 ease-out shadow-sm dark:shadow-[0_0_12px_rgba(246,218,126,0.65)]"
                 style={{ width: `${Math.min(100, Math.max(0, stats.overallPercentage))}%` }}
               />
             </div>
@@ -363,8 +362,8 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
               <span>Target: {stats.monthlyGoal.targetPercentage}%</span>
               <span>
                 {stats.overallPercentage >= stats.monthlyGoal.targetPercentage ? (
-                  <span className="text-slate-900 dark:text-white font-bold flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" /> Target Reached
+                  <span className="text-slate-900 dark:text-[#f6da7e] font-bold flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5 text-slate-900 dark:text-[#f6da7e]" /> Target Reached
                   </span>
                 ) : (
                   <span className="text-slate-600 dark:text-slate-200">

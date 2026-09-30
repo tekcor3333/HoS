@@ -195,7 +195,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white dark:text-slate-950 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-5 py-2 text-xs font-bold text-white dark:text-[#0f1013] bg-slate-900 dark:bg-[#faf6ee] hover:bg-slate-800 dark:hover:bg-white dark:border dark:border-[#f6da7e]/40 dark:shadow-[0_0_12px_rgba(246,218,126,0.3)] rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Check className="w-3.5 h-3.5" />
               <span>{habitToEdit ? 'Save Changes' : 'Add Habit'}</span>

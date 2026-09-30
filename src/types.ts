@@ -70,4 +70,31 @@ export interface MonthOverviewStats {
   monthlyGoal: MonthlyGoals;
 }
 
+export type AppView =
+  | 'overview'
+  | 'check-in'
+  | 'tasks'
+  | 'grid'
+  | 'weekly'
+  | 'analysis'
+  | 'goals'
+  | 'history';
+
+export interface TabOriginRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface DailyTodoTask {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high';
+  completed: boolean;
+  createdAt: string;
+}
+
 export type ViewTab = 'all' | 'grid' | 'dashboard' | 'analysis' | 'daily' | 'weekly' | 'goals';

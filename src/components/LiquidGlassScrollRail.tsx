@@ -30,7 +30,15 @@ const getScrollMetrics = () => {
   return { scrollTop, scrollHeight, clientHeight, maxScroll, scrollProgress };
 };
 
-export const LiquidGlassScrollRail: React.FC = () => {
+interface LiquidGlassScrollRailProps {
+  activeView?: string;
+  isTransitioning?: boolean;
+}
+
+export const LiquidGlassScrollRail: React.FC<LiquidGlassScrollRailProps> = ({
+  activeView,
+  isTransitioning = false,
+}) => {
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [thumbHeight, setThumbHeight] = useState<number>(56);
   const [trackHeight, setTrackHeight] = useState<number>(0);
@@ -183,6 +191,17 @@ export const LiquidGlassScrollRail: React.FC = () => {
       }
     };
   }, [updateMetrics, scanSections, triggerActivity]);
+
+  // Re-synchronize metrics and section markers when active view changes
+  useEffect(() => {
+    updateMetrics();
+    scanSections();
+    const timer = setTimeout(() => {
+      updateMetrics();
+      scanSections();
+    }, 420);
+    return () => clearTimeout(timer);
+  }, [activeView, updateMetrics, scanSections]);
 
   // Pointer Drag handling on Liquid Glass Thumb
   const handleThumbPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {

@@ -30,7 +30,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         <div className="tourera-glass-card rounded-3xl p-4.5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-200">Period</span>
-            <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-xs">
+            <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-[#faf6ee] text-white dark:text-[#0f1013] flex items-center justify-center shadow-xs dark:shadow-[0_0_10px_rgba(246,218,126,0.3)]">
               <Calendar className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -48,7 +48,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         <div className="tourera-glass-card rounded-3xl p-4.5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-200">Total Habits</span>
-            <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-xs">
+            <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-[#faf6ee] text-white dark:text-[#0f1013] flex items-center justify-center shadow-xs dark:shadow-[0_0_10px_rgba(246,218,126,0.3)]">
               <ListChecks className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -66,7 +66,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         <div className="tourera-glass-card rounded-3xl p-4.5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-200">Check-ins</span>
-            <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-xs">
+            <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-[#faf6ee] text-white dark:text-[#0f1013] flex items-center justify-center shadow-xs dark:shadow-[0_0_10px_rgba(246,218,126,0.3)]">
               <Check className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -105,8 +105,8 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         <div className="tourera-glass-card rounded-3xl p-4.5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-200">Top Streak</span>
-            <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-white text-amber-400 dark:text-amber-500 flex items-center justify-center shadow-xs">
-              <Flame className="w-3.5 h-3.5 fill-amber-400 dark:fill-amber-500" />
+            <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-[#faf6ee] text-amber-500 dark:text-[#b4881f] flex items-center justify-center shadow-xs dark:shadow-[0_0_10px_rgba(246,218,126,0.3)]">
+              <Flame className="w-3.5 h-3.5 fill-amber-400 dark:fill-[#b4881f]" />
             </div>
           </div>
           <div>
@@ -123,7 +123,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         <div className="tourera-glass-card rounded-3xl p-4.5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-200">Month Goal</span>
-            <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-xs">
+            <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-[#faf6ee] text-white dark:text-[#0f1013] flex items-center justify-center shadow-xs dark:shadow-[0_0_10px_rgba(246,218,126,0.3)]">
               <Target className="w-3.5 h-3.5" />
             </div>
           </div>
