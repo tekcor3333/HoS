@@ -2,7 +2,6 @@ import React from 'react';
 import { Habit, DailyStat } from '../types';
 import { getDaysInMonth, getWeekGroups } from '../utils/dateUtils';
 import { Edit2, Trash2, Plus, Check } from 'lucide-react';
-import { DailyTaskProgressSection } from './DailyTaskProgressSection';
 
 interface MonthlyHabitGridProps {
   habits: Habit[];
@@ -84,7 +83,7 @@ export const MonthlyHabitGrid: React.FC<MonthlyHabitGridProps> = ({
 
       {/* Main Transparent Table Sheet */}
       <div className="tourera-glass-card rounded-3xl overflow-hidden border border-white/90 dark:border-white/10 shadow-md">
-        <div className="overflow-x-auto scrollbar-thin">
+        <div className="overflow-x-auto scrollbar-none md:scrollbar-thin">
           <table className="w-full text-xs text-slate-900 dark:text-slate-100 border-collapse select-none">
             {/* Week Headers Row */}
             <thead>
@@ -420,18 +419,6 @@ export const MonthlyHabitGrid: React.FC<MonthlyHabitGridProps> = ({
           </div>
         </div>
       </div>
-
-      {/* NEW DAILY TASK + PROGRESS SECTION (Directly after Habit Grid & Graph) */}
-      <DailyTaskProgressSection
-        habits={habits}
-        checks={checks}
-        dailyStats={dailyStats}
-        year={year}
-        month={month}
-        monthName={monthName}
-        onToggleCheck={onToggleCheck}
-        todayDate={todayDate}
-      />
     </section>
   );
 };

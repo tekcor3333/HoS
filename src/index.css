@@ -212,6 +212,30 @@
   transform: none !important;
 }
 
+/* Daily Task Column Day Card */
+.tourera-day-card {
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease, border-color 220ms ease, background 220ms ease;
+  transform-origin: center center;
+}
+
+.tourera-day-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 20px 40px -8px rgba(15, 23, 42, 0.18),
+    0 8px 16px -4px rgba(15, 23, 42, 0.08),
+    inset 0 1px 2px #ffffff;
+  border-color: rgba(148, 163, 184, 0.7);
+}
+
+.dark .tourera-day-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 24px 48px -10px rgba(0, 0, 0, 0.85),
+    0 0 24px rgba(246, 218, 126, 0.2),
+    inset 0 1px 2px rgba(255, 255, 255, 0.25);
+  border-color: rgba(246, 218, 126, 0.65);
+}
+
 /* Dark Tourera Card variant for high-contrast hero focal points */
 .tourera-dark-card {
   background: radial-gradient(120% 120% at 50% 0%, rgba(255, 255, 255, 0.92) 0%, rgba(241, 245, 249, 0.8) 100%);
@@ -323,6 +347,30 @@ html {
 }
 html::-webkit-scrollbar {
   display: none;
+}
+
+/* Scrollbar none utility & mobile sliding bar removal */
+.scrollbar-none {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* On mobile devices, remove all sliding scrollbars completely */
+@media (max-width: 768px) {
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
 }
 
 /* Custom Apple-Style Liquid Glass Scroll Rail */

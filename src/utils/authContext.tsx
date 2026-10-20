@@ -45,6 +45,7 @@ export interface AuthContextType {
   verifyEmailCode: (code: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   clearError: () => void;
+  getToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -92,7 +93,7 @@ export function getClerkPublishableKey(): string {
 // Inner provider that uses Clerk hooks when ClerkProvider is active
 const ClerkAuthInnerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user: clerkUser, isLoaded: isUserLoaded, isSignedIn } = useUser();
-  const { isLoaded: isAuthLoaded } = useClerkAuth();
+  const { isLoaded: isAuthLoaded, getToken: useClerkAuthToken } = useClerkAuth();
   const { signIn, isLoaded: isSignInLoaded, setActive: setSignInActive } = useSignIn();
   const { signUp, isLoaded: isSignUpLoaded, setActive: setSignUpActive } = useSignUp();
   const { signOut } = useClerk();
@@ -526,6 +527,16 @@ const ClerkAuthInnerProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const clearError = useCallback(() => setError(null), []);
 
+  const getToken = useCallback(async () => {
+    try {
+      if (!isSignedIn) return null;
+      return await useClerkAuthToken();
+    } catch (e) {
+      console.warn('Failed to get Clerk JWT token:', e);
+      return null;
+    }
+  }, [isSignedIn, useClerkAuthToken]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -541,6 +552,7 @@ const ClerkAuthInnerProvider: React.FC<{ children: ReactNode }> = ({ children })
         verifyEmailCode,
         logout,
         clearError,
+        getToken,
       }}
     >
       {children}
@@ -598,6 +610,7 @@ const ClerkUnconfiguredProvider: React.FC<{ children: ReactNode }> = ({ children
         verifyEmailCode,
         logout,
         clearError,
+        getToken: async () => null,
       }}
     >
       {children}

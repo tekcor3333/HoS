@@ -20,7 +20,9 @@ import {
   Edit2,
   Copy,
   X,
+  Maximize2,
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import confetti from 'canvas-confetti';
 
 interface DailyTaskProgressSectionProps {
@@ -35,6 +37,8 @@ interface DailyTaskProgressSectionProps {
   // Optional for backward compatibility with existing parent callers
   habits?: unknown[];
   onToggleCheck?: (habitId: string, day: number) => void;
+  dailyTodos?: Record<string, DailyTodoTask[]>;
+  onDailyTodosChange?: (todos: Record<string, DailyTodoTask[]>) => void;
 }
 
 export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> = ({
@@ -44,6 +48,8 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
   todayDate,
   standaloneView = false,
   onAddHabit,
+  dailyTodos: externalDailyTodos,
+  onDailyTodosChange,
 }) => {
   const daysInMonth = getDaysInMonth(year, month);
   const weekGroups = useMemo(() => getWeekGroups(daysInMonth), [daysInMonth]);
@@ -53,9 +59,11 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
   const todayDay = isCurrentMonth ? todayDate.getDate() : -1;
 
   // Independent Daily Todos Collection stored by exact YYYY-MM-DD
-  const [dailyTodos, setDailyTodos] = useState<Record<string, DailyTodoTask[]>>(() =>
+  const [internalDailyTodos, setInternalDailyTodos] = useState<Record<string, DailyTodoTask[]>>(() =>
     loadDailyTodos()
   );
+
+  const dailyTodos = externalDailyTodos || internalDailyTodos;
 
   // Add Task inline form state (per date)
   const [addingTaskForDate, setAddingTaskForDate] = useState<string | null>(null);
@@ -73,6 +81,29 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
   // Copy modal/dropdown state
   const [copyingFromDate, setCopyingFromDate] = useState<string | null>(null);
   const [copyTargetDate, setCopyTargetDate] = useState<string>('');
+
+  // Fullscreen expanded day card modal state
+  const [fullScreenDayDate, setFullScreenDayDate] = useState<string | null>(null);
+
+  // Close full screen day modal on Escape key and lock body scroll
+  useEffect(() => {
+    if (!fullScreenDayDate) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setFullScreenDayDate(null);
+      }
+    };
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [fullScreenDayDate]);
 
   // Initial week based on current day or Week 1
   const initialWeek = useMemo(() => {
@@ -199,15 +230,16 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
     weekGroups.find((g) => g.weekNumber === activeWeekNumber) || weekGroups[0];
   const displayedDays = activeWeek ? activeWeek.days : [];
 
-  // Helper to update daily todos with persistence
+  // Helper to update daily todos with persistence and cross-device synchronization
   const updateDailyTodos = (
     updater: (prev: Record<string, DailyTodoTask[]>) => Record<string, DailyTodoTask[]>
   ) => {
-    setDailyTodos((prev) => {
-      const next = updater(prev);
-      saveDailyTodos(next);
-      return next;
-    });
+    const next = updater(dailyTodos);
+    setInternalDailyTodos(next);
+    saveDailyTodos(next);
+    if (onDailyTodosChange) {
+      onDailyTodosChange(next);
+    }
   };
 
   // Add task to a specific date only
@@ -605,8 +637,8 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
       </div>
 
       {/* Main Horizontal Daily Cards Row */}
-      {/* On desktop: clean 7-column horizontal layout; On mobile/tablet: smooth horizontal scroll */}
-      <div className="w-full overflow-x-auto scrollbar-thin pb-3 pt-1 -mx-2 px-2 sm:mx-0 sm:px-0">
+      {/* On desktop: clean 7-column horizontal layout; On mobile/tablet: smooth horizontal scroll without ugly scrollbar */}
+      <div className="w-full overflow-x-auto scrollbar-none md:scrollbar-thin pt-3 pb-6 -mx-2 px-2 sm:mx-0 sm:px-0">
         <div className="flex lg:grid lg:grid-cols-7 gap-3.5 min-w-max lg:min-w-0">
           {displayedDays.map((day) => {
             const dateKey = formatDateKey(year, month, day);
@@ -634,14 +666,32 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
             return (
               <div
                 key={dateKey}
-                className={`tourera-glass-card rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 w-[220px] sm:w-[235px] lg:w-auto shrink-0 lg:shrink ${
+                onClick={(e) => {
+                  // If clicking interactive controls (buttons, inputs, selects), let them handle their action
+                  const target = e.target as HTMLElement;
+                  if (
+                    target.closest('button') ||
+                    target.closest('input') ||
+                    target.closest('select') ||
+                    target.closest('textarea') ||
+                    target.closest('a')
+                  ) {
+                    return;
+                  }
+                  // Open this specific day in full-screen expanded view
+                  setFullScreenDayDate(dateKey);
+                }}
+                className={`tourera-glass-card tourera-day-card group/daycard rounded-3xl p-4 flex flex-col justify-between w-[220px] sm:w-[235px] lg:w-auto shrink-0 lg:shrink relative cursor-pointer select-none transition-all duration-200 hover:-translate-y-1.5 hover:shadow-2xl z-0 ${
                   isToday
-                    ? 'ring-2 ring-slate-900/60 dark:ring-0 dark:littlebird-active-tile bg-white/85 shadow-lg relative'
+                    ? 'ring-2 ring-slate-900/60 dark:ring-0 dark:littlebird-active-tile bg-white/85 shadow-lg'
                     : percentage > 0
                     ? 'bg-white/70 dark:bg-[#161820]/90 border border-slate-200/80 dark:border-[#f6da7e]/40 dark:shadow-[0_0_18px_rgba(246,218,126,0.14)]'
-                    : 'bg-white/50 dark:bg-[#12141a]/80 hover:bg-white/70 dark:hover:bg-[#181a22]/90 border border-slate-200/50 dark:border-white/[0.08]'
+                    : 'bg-white/50 dark:bg-[#12141a]/80 border border-slate-200/50 dark:border-white/[0.08]'
                 }`}
               >
+                {/* Top specular edge reflection on hover */}
+                <div className="absolute top-0 inset-x-6 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-[#f6da7e]/50 to-transparent transition-opacity duration-300 pointer-events-none rounded-t-3xl opacity-0 group-hover/daycard:opacity-100" />
+
                 {/* 1. DAY NAME & DATE HEADER */}
                 <div className="pb-3 border-b border-slate-200/70 dark:border-white/10 flex items-start justify-between">
                   <div>
@@ -661,11 +711,27 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                   </div>
 
                   <div className="flex items-center gap-1">
+                    {/* Expand Fullscreen Button */}
+                    <button
+                      type="button"
+                      title={`Expand ${dayName} full screen`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFullScreenDayDate(dateKey);
+                      }}
+                      className="px-1.5 py-1 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white bg-slate-100/90 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 transition-all cursor-pointer flex items-center gap-1 border border-slate-200/60 dark:border-white/10 shadow-2xs"
+                      aria-label={`Expand ${dayName} full screen`}
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">Expand</span>
+                    </button>
+
                     {/* Copy to Date Button */}
                     <button
                       type="button"
                       title={`Copy ${dayName}'s tasks to another date`}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setCopyingFromDate(isCopyingThisDay ? null : dateKey);
                         setCopyTargetDate('');
                       }}
@@ -777,7 +843,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                 </div>
 
                 {/* 3. TASK PROGRESS BAR / SUMMARY AREA */}
-                <div className="py-2.5 px-3 rounded-2xl bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10 mb-3">
+                <div className="py-2.5 px-3 rounded-2xl bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10 mb-3 transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-xs hover:border-slate-300 dark:hover:border-white/20">
                   <div className="flex items-center justify-between text-[11px] mb-1.5">
                     <span className="font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider text-[10px]">
                       Tasks
@@ -803,7 +869,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                     </span>
                   </div>
 
-                  <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
+                  <div className="space-y-2 relative overflow-visible px-1 py-1">
                     {tasks.map((task) => {
                       const isEditing =
                         editingTaskId === task.id && editingDateKey === dateKey;
@@ -812,7 +878,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                         return (
                           <div
                             key={task.id}
-                            className="p-2.5 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-slate-300 dark:border-white/20 shadow-sm space-y-2"
+                            className="p-2.5 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-slate-300 dark:border-white/20 shadow-sm space-y-2 relative z-30"
                           >
                             <input
                               type="text"
@@ -864,32 +930,32 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                       return (
                         <div
                           key={task.id}
-                          className={`flex items-center justify-between px-2.5 py-2 rounded-xl border transition-all select-none group ${
-                            task.completed
-                              ? 'bg-slate-900/5 dark:bg-white/10 border-slate-900/10 dark:border-white/15'
-                              : 'bg-white/40 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 border-white/70 dark:border-white/10'
-                          }`}
+                          className="w-full rounded-xl border px-2.5 py-1.5 flex items-center justify-between min-h-[36px] transition-colors bg-white/40 dark:bg-white/5 border-white/70 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/25 hover:bg-white/70 dark:hover:bg-white/10 group/task"
                         >
-                          <div
-                            onClick={() => handleToggleTask(dateKey, task.id)}
-                            className="flex items-center gap-2 min-w-0 mr-1.5 flex-1 cursor-pointer"
-                          >
+                          <div className="flex items-center gap-2 min-w-0 mr-1.5 flex-1">
                             {/* Checkbox (Unchecked ☐ / Completed ☑) */}
-                            <div
-                              className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-all ${
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleTask(dateKey, task.id);
+                              }}
+                              className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
                                 task.completed
                                   ? 'tourera-check-active scale-100'
-                                  : 'tourera-check-empty group-hover:border-slate-400 dark:group-hover:border-white/40'
+                                  : 'tourera-check-empty group-hover/task:border-slate-400 dark:group-hover/task:border-white/40'
                               }`}
+                              title={task.completed ? 'Mark incomplete' : 'Mark complete'}
+                              aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
                             >
                               {task.completed && (
                                 <Check className="w-2.5 h-2.5 stroke-[3.5]" />
                               )}
-                            </div>
+                            </button>
 
-                            <div className="truncate">
+                            <div className="min-w-0 flex-1">
                               <span
-                                className={`text-[11px] font-medium truncate block ${
+                                className={`text-[11px] font-medium block truncate transition-all ${
                                   task.completed
                                     ? 'line-through text-slate-400 dark:text-slate-500'
                                     : 'text-slate-900 dark:text-white'
@@ -906,8 +972,8 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                             </div>
                           </div>
 
-                          {/* Task Hover Action Controls (Edit & Delete) */}
-                          <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
+                          {/* Task Action Controls (Edit & Delete) */}
+                          <div className="opacity-0 group-hover/task:opacity-100 focus-within:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
                             <button
                               type="button"
                               onClick={(e) => {
@@ -915,7 +981,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                                 handleStartEdit(dateKey, task);
                               }}
                               title="Edit task"
-                              className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                              className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                             >
                               <Edit2 className="w-2.5 h-2.5" />
                             </button>
@@ -926,7 +992,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                                 handleDeleteTask(dateKey, task.id);
                               }}
                               title="Delete task"
-                              className="p-1 rounded-md text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                              className="p-1 rounded-md text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-2.5 h-2.5" />
                             </button>
@@ -943,7 +1009,8 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                         </p>
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setAddingTaskForDate(dateKey);
                             setNewTaskTitle('');
                             setNewTaskDesc('');
@@ -955,6 +1022,12 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                         </button>
                       </div>
                     )}
+                  </div>
+
+                  {/* Visual Cue: Click to expand full screen */}
+                  <div className="mt-2.5 pt-2 border-t border-slate-200/50 dark:border-white/5 flex items-center justify-center gap-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-400 group-hover/daycard:text-slate-900 dark:group-hover/daycard:text-[#f6da7e] transition-colors pointer-events-none">
+                    <Maximize2 className="w-3 h-3 shrink-0" />
+                    <span>Click card to expand full screen</span>
                   </div>
 
                   {/* Inline Add Task Form for this Specific Day */}
@@ -1088,6 +1161,485 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
           </div>
         </div>
       </div>
+
+      {/* FULL-SCREEN EXPANDED DAY MODAL VIA PORTAL */}
+      {fullScreenDayDate && typeof document !== 'undefined' &&
+        createPortal(
+          (() => {
+            const [yStr, mStr, dStr] = fullScreenDayDate.split('-');
+            const mYear = parseInt(yStr, 10);
+            const mMonth = parseInt(mStr, 10);
+            const mDay = parseInt(dStr, 10);
+            const { fullName: modalDayName } = getDayOfWeek(mYear, mMonth, mDay);
+            const modalFormattedDate = `${String(mDay).padStart(2, '0')}.${String(mMonth).padStart(2, '0')}.${mYear}`;
+            const isModalToday = mDay === todayDay && isCurrentMonth;
+
+            const modalTasks = dailyTodos[fullScreenDayDate] || [];
+            const modalTotalTasks = modalTasks.length;
+            const modalCompletedCount = modalTasks.filter((t) => t.completed).length;
+            const modalPercentage =
+              modalTotalTasks > 0 ? Math.round((modalCompletedCount / modalTotalTasks) * 100) : 0;
+            const modalIsAllCompleted = modalTotalTasks > 0 && modalCompletedCount === modalTotalTasks;
+
+            // Modal circle geometry (larger 90px diameter)
+            const modalRadius = 38;
+            const modalCircumference = 2 * Math.PI * modalRadius;
+            const modalOffset = modalCircumference - (modalPercentage / 100) * modalCircumference;
+
+            const isAddingModal = addingTaskForDate === fullScreenDayDate;
+
+            return (
+              <div
+                className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 md:p-8 animate-in fade-in duration-200"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`${modalDayName} task details`}
+              >
+                {/* 1. STRONG LIQUID GLASS BACKDROP BLUR */}
+                <div
+                  className="fixed inset-0 bg-slate-950/60 dark:bg-black/75 backdrop-blur-xl transition-opacity cursor-pointer"
+                  onClick={() => setFullScreenDayDate(null)}
+                />
+
+                {/* 2. FULLSCREEN EXPANDED CARD CONTAINER (90-95% viewport width, 90-95% viewport height) */}
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="relative w-[95vw] h-[93vh] max-w-[1400px] flex flex-col rounded-3xl sm:rounded-4xl bg-white/95 dark:bg-[#12141c]/95 border border-white/80 dark:border-[#f6da7e]/40 shadow-[0_32px_80px_rgba(0,0,0,0.55)] dark:shadow-[0_0_60px_rgba(246,218,126,0.22)] backdrop-blur-2xl overflow-hidden animate-in zoom-in-95 duration-200 select-text"
+                >
+                  {/* Top Specular Rim Reflection */}
+                  <div className="absolute top-0 inset-x-8 h-[2px] bg-gradient-to-r from-transparent via-white dark:via-[#f6da7e]/70 to-transparent pointer-events-none" />
+
+                  {/* MODAL HEADER */}
+                  <div className="px-6 sm:px-8 py-5 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-4 bg-white/40 dark:bg-white/[0.03]">
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-900/5 dark:bg-white/10 border border-slate-200/80 dark:border-white/10 flex items-center justify-center shrink-0">
+                        <Calendar className="w-6 h-6 text-slate-800 dark:text-[#f6da7e]" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                            {modalDayName}
+                          </h2>
+                          {isModalToday && (
+                            <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-md bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs">
+                              Today
+                            </span>
+                          )}
+                          {modalIsAllCompleted && (
+                            <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-md bg-emerald-500/15 dark:bg-emerald-400/20 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" /> All Done!
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs sm:text-sm font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                          {modalFormattedDate} • {modalTotalTasks} {modalTotalTasks === 1 ? 'task' : 'tasks'} planned
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Controls & Close Button */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddingTaskForDate(fullScreenDayDate);
+                          setNewTaskTitle('');
+                          setNewTaskDesc('');
+                          setNewTaskPriority('medium');
+                        }}
+                        className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-900 dark:text-white bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Task</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setFullScreenDayDate(null)}
+                        aria-label="Close expanded view"
+                        className="h-10 px-3.5 rounded-2xl flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-800 dark:text-slate-100 hover:text-slate-950 dark:hover:text-white border border-slate-200/80 dark:border-white/15 transition-colors cursor-pointer shadow-xs text-xs font-bold"
+                      >
+                        <X className="w-4 h-4 stroke-[2.5]" />
+                        <span>Close</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* MODAL SCROLLABLE BODY */}
+                  <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6">
+                    {/* STATS OVERVIEW CARDS */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* 1. Large Circular Progress Ring */}
+                      <div className="p-4 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-4">
+                        <div className="relative flex items-center justify-center w-20 h-20 shrink-0">
+                          <svg viewBox="0 0 90 90" className="w-20 h-20 -rotate-90 transform overflow-visible">
+                            <circle
+                              cx="45"
+                              cy="45"
+                              r={modalRadius}
+                              stroke="currentColor"
+                              strokeWidth="5"
+                              fill="transparent"
+                              className="text-slate-200/80 dark:text-white/10"
+                            />
+                            <circle
+                              cx="45"
+                              cy="45"
+                              r={modalRadius}
+                              stroke="currentColor"
+                              strokeWidth="5"
+                              strokeDasharray={modalCircumference}
+                              strokeDashoffset={modalOffset}
+                              strokeLinecap="round"
+                              fill="transparent"
+                              className="text-slate-900 dark:text-[#f6da7e] transition-all duration-500 ease-out"
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-lg font-black text-slate-900 dark:text-white font-mono tabular-nums">
+                              {modalPercentage}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block tracking-wider">
+                            Progress
+                          </span>
+                          <span className="text-sm font-bold text-slate-900 dark:text-white block mt-0.5">
+                            {modalCompletedCount} of {modalTotalTasks} Done
+                          </span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5 block">
+                            {modalTotalTasks - modalCompletedCount} remaining
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 2. Completion Status Bar */}
+                      <div className="p-4 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                          <span>Task Progress</span>
+                          <span className="font-mono">{modalPercentage}%</span>
+                        </div>
+                        <div className="w-full h-3 rounded-full bg-slate-200/80 dark:bg-black/60 overflow-hidden my-2">
+                          <div
+                            className="h-full rounded-full bg-slate-900 dark:bg-gradient-to-r dark:from-[#f6da7e] dark:to-[#fff0b5] transition-all duration-500"
+                            style={{ width: `${modalPercentage}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                          {modalIsAllCompleted
+                            ? 'All tasks completed 🎉'
+                            : modalTotalTasks > 0
+                            ? `${modalTotalTasks - modalCompletedCount} left to complete`
+                            : 'No tasks configured'}
+                        </span>
+                      </div>
+
+                      {/* 3. Quick Actions / Copy Card */}
+                      <div className="p-4 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 flex flex-col justify-between">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
+                            Day Status
+                          </span>
+                          {modalIsAllCompleted ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                              Completed
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                              In Progress
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddingTaskForDate(fullScreenDayDate);
+                              setNewTaskTitle('');
+                              setNewTaskDesc('');
+                              setNewTaskPriority('medium');
+                            }}
+                            className="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-950 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Task</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* INLINE ADD TASK FORM IN MODAL */}
+                    {isAddingModal && (
+                      <div className="p-4 rounded-2xl bg-slate-50/90 dark:bg-slate-900/90 border border-slate-300 dark:border-white/20 shadow-md space-y-3">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                          <span>Add New Task to {modalDayName}</span>
+                          <button
+                            type="button"
+                            onClick={() => setAddingTaskForDate(null)}
+                            className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          autoFocus
+                          value={newTaskTitle}
+                          onChange={(e) => setNewTaskTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveNewTask(fullScreenDayDate);
+                            if (e.key === 'Escape') setAddingTaskForDate(null);
+                          }}
+                          placeholder="Task title (e.g. Complete quarterly report, read 30 pages)..."
+                          className="w-full text-sm font-medium px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-white/10 focus:outline-hidden"
+                        />
+                        <textarea
+                          rows={2}
+                          value={newTaskDesc}
+                          onChange={(e) => setNewTaskDesc(e.target.value)}
+                          placeholder="Optional task notes or details..."
+                          className="w-full text-xs font-normal px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-white/10 focus:outline-hidden resize-none"
+                        />
+                        <div className="flex items-center justify-between pt-1">
+                          <select
+                            value={newTaskPriority}
+                            onChange={(e) => setNewTaskPriority(e.target.value as 'low' | 'medium' | 'high')}
+                            className="text-xs px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-white/10"
+                          >
+                            <option value="low">Low Priority</option>
+                            <option value="medium">Medium Priority</option>
+                            <option value="high">High Priority</option>
+                          </select>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setAddingTaskForDate(null)}
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!newTaskTitle.trim()}
+                              onClick={() => handleSaveNewTask(fullScreenDayDate)}
+                              className="px-4 py-1.5 rounded-xl text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-950 disabled:opacity-40"
+                            >
+                              Add to {modalDayName}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* COMPLETE FULL-WIDTH TASK LIST */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider px-1">
+                        <span>Checklist ({modalCompletedCount}/{modalTotalTasks} completed)</span>
+                        {!isAddingModal && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddingTaskForDate(fullScreenDayDate);
+                              setNewTaskTitle('');
+                              setNewTaskDesc('');
+                              setNewTaskPriority('medium');
+                            }}
+                            className="text-xs font-bold text-slate-900 dark:text-[#f6da7e] hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Add Task
+                          </button>
+                        )}
+                      </div>
+
+                      {modalTasks.length === 0 && !isAddingModal && (
+                        <div className="text-center py-12 px-4 rounded-3xl bg-slate-100/50 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/10">
+                          <ListTodo className="w-10 h-10 mx-auto text-slate-400 dark:text-slate-500 mb-2" />
+                          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                            No tasks for {modalDayName} yet
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                            Add individual tasks to keep track of your daily checklist and habits.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddingTaskForDate(fullScreenDayDate);
+                              setNewTaskTitle('');
+                              setNewTaskDesc('');
+                              setNewTaskPriority('medium');
+                            }}
+                            className="mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-950 shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <Plus className="w-4 h-4" /> Add First Task
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="space-y-2.5">
+                        {modalTasks.map((task) => {
+                          const isEditing = editingTaskId === task.id && editingDateKey === fullScreenDayDate;
+
+                          if (isEditing) {
+                            return (
+                              <div
+                                key={task.id}
+                                className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/20 shadow-md space-y-3"
+                              >
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  value={editTitle}
+                                  onChange={(e) => setEditTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveEdit(fullScreenDayDate, task.id);
+                                    if (e.key === 'Escape') setEditingTaskId(null);
+                                  }}
+                                  placeholder="Task title..."
+                                  className="w-full text-sm font-medium px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 focus:outline-hidden"
+                                />
+                                <textarea
+                                  rows={2}
+                                  value={editDesc}
+                                  onChange={(e) => setEditDesc(e.target.value)}
+                                  placeholder="Task description (optional)..."
+                                  className="w-full text-xs px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 focus:outline-hidden resize-none"
+                                />
+                                <div className="flex items-center justify-between">
+                                  <select
+                                    value={editPriority}
+                                    onChange={(e) => setEditPriority(e.target.value as 'low' | 'medium' | 'high')}
+                                    className="px-2 py-1 rounded-lg text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10"
+                                  >
+                                    <option value="low">Low Priority</option>
+                                    <option value="medium">Medium Priority</option>
+                                    <option value="high">High Priority</option>
+                                  </select>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingTaskId(null)}
+                                      className="px-3 py-1 rounded-lg text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveEdit(fullScreenDayDate, task.id)}
+                                      className="px-4 py-1.5 rounded-lg text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-950"
+                                    >
+                                      Save Changes
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div
+                              key={task.id}
+                              className={`p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 flex items-start justify-between gap-3 ${
+                                task.completed
+                                  ? 'bg-slate-100/60 dark:bg-white/[0.03] border-slate-200/60 dark:border-white/5 opacity-75'
+                                  : 'bg-white/80 dark:bg-white/[0.06] border-slate-200/90 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25 shadow-xs'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleTask(fullScreenDayDate, task.id)}
+                                  aria-label={task.completed ? 'Mark task incomplete' : 'Mark task completed'}
+                                  className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
+                                    task.completed
+                                      ? 'bg-slate-900 text-white dark:bg-[#f6da7e] dark:text-slate-950 shadow-xs'
+                                      : 'border-2 border-slate-300 dark:border-white/30 hover:border-slate-600 dark:hover:border-white/60 bg-transparent'
+                                  }`}
+                                >
+                                  {task.completed && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
+                                </button>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span
+                                      className={`text-sm sm:text-base font-semibold transition-all ${
+                                        task.completed
+                                          ? 'line-through text-slate-400 dark:text-slate-500'
+                                          : 'text-slate-900 dark:text-white'
+                                      }`}
+                                    >
+                                      {task.title}
+                                    </span>
+                                    {task.priority === 'high' && (
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-red-500/10 dark:bg-red-500/20 text-red-600 dark:text-red-400">
+                                        High Priority
+                                      </span>
+                                    )}
+                                    {task.priority === 'low' && (
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-200/60 dark:bg-white/10 text-slate-600 dark:text-slate-400">
+                                        Low
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {task.description && (
+                                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-wrap leading-relaxed">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Action controls */}
+                              <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEdit(fullScreenDayDate, task)}
+                                  title="Edit task"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTask(fullScreenDayDate, task.id)}
+                                  title="Delete task"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* MODAL FOOTER */}
+                  <div className="px-6 sm:px-8 py-3.5 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between text-xs bg-white/40 dark:bg-white/[0.02]">
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-mono">
+                      <span>Press</span>
+                      <kbd className="px-1.5 py-0.5 rounded-md bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-mono text-[11px]">
+                        ESC
+                      </kbd>
+                      <span>or click outside to close</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setFullScreenDayDate(null)}
+                      className="px-4 py-1.5 rounded-xl text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-950 cursor-pointer shadow-xs"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })(),
+          document.body
+        )}
     </section>
   );
 };

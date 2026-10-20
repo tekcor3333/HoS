@@ -16,6 +16,7 @@ interface TopNavigationProps {
   onToggleDarkMode?: () => void;
   onOpenShowcase?: () => void;
   onOpenJoin?: () => void;
+  cloudSyncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
 }
 
 export const TopNavigation: React.FC<TopNavigationProps> = ({
@@ -30,6 +31,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
   onToggleDarkMode,
   onOpenShowcase,
   onOpenJoin,
+  cloudSyncStatus = 'idle',
 }) => {
   const { user, isAuthenticated } = useAuth();
 
@@ -186,9 +188,20 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
                   {user.name.charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="text-[11px] sm:text-xs font-bold truncate max-w-[60px] sm:max-w-[80px]">
+              <span className="text-[11px] sm:text-xs font-bold truncate max-w-[55px] sm:max-w-[75px]">
                 {user.name.split(' ')[0]}
               </span>
+              {cloudSyncStatus === 'syncing' ? (
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"
+                  title="Synchronizing changes across devices..."
+                />
+              ) : (
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"
+                  title="Cloud Synced across Laptop, Mobile & Tablet"
+                />
+              )}
             </button>
           ) : (
             <button

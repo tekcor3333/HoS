@@ -4,6 +4,8 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { requireClerkAuth, refreshJwksKeys } from './server/clerkAuth';
+import { getUserData, syncUserData, waitForUserUpdate } from './server/cloudStore';
 
 dotenv.config();
 
@@ -26,6 +28,9 @@ function extractPublishableKey(...candidates: Array<string | undefined>): string
 }
 
 async function startServer() {
+  // Pre-fetch Clerk JWKS keys asynchronously so first user requests are fast
+  refreshJwksKeys().catch((err) => console.warn('Background JWKS pre-fetch notice:', err));
+
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
@@ -70,6 +75,63 @@ async function startServer() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // ==============================================================================
+  // SECURE CROSS-DEVICE CLOUD DATA SYNCHRONIZATION API
+  // Uses authenticated Clerk User ID as isolated data partition key
+  // ==============================================================================
+
+  // 1. Fetch authenticated user's full cloud data
+  app.get('/api/user/data', requireClerkAuth, async (req, res) => {
+    try {
+      const userId = req.clerkUser!.userId;
+      const data = await getUserData(userId);
+      res.json({
+        success: true,
+        data,
+        version: data?.version || 0,
+        userId,
+      });
+    } catch (err) {
+      console.error('Error fetching user cloud data:', err);
+      res.status(500).json({ success: false, error: 'Failed to fetch user data' });
+    }
+  });
+
+  // 2. Synchronize and merge user changes to cloud store
+  app.post('/api/user/sync', requireClerkAuth, async (req, res) => {
+    try {
+      const userId = req.clerkUser!.userId;
+      const payload = req.body;
+      const updated = await syncUserData(userId, payload);
+      res.json({
+        success: true,
+        data: updated,
+        version: updated.version,
+      });
+    } catch (err) {
+      console.error('Error saving user sync to cloud:', err);
+      res.status(500).json({ success: false, error: 'Failed to save changes to cloud' });
+    }
+  });
+
+  // 3. Real-time update polling across active devices (Laptop, Phone, Tablet)
+  app.get('/api/user/poll', requireClerkAuth, async (req, res) => {
+    try {
+      const userId = req.clerkUser!.userId;
+      const sinceVersion = parseInt(req.query.sinceVersion as string, 10) || 0;
+      const result = await waitForUserUpdate(userId, sinceVersion, 20000);
+      res.json({
+        success: true,
+        hasUpdate: result.hasUpdate,
+        version: result.version,
+        data: result.data || null,
+      });
+    } catch (err) {
+      console.error('Error polling user updates:', err);
+      res.status(500).json({ success: false, error: 'Failed to poll updates' });
+    }
+  });
+
   const isProduction = process.env.NODE_ENV === 'production';
 
   if (isProduction) {
@@ -81,7 +143,7 @@ async function startServer() {
   } else {
     // Mount Vite dev server in middleware mode
     const vite = await createViteServer({
-      server: { middlewareMode: true, host: '0.0.0.0' },
+      server: { middlewareMode: true, host: '0.0.0.0', allowedHosts: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);

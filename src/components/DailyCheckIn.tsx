@@ -113,7 +113,7 @@ export const DailyCheckIn: React.FC<DailyCheckInProps> = ({
         isSelectedToday ? 'ring-2 ring-slate-900/10 dark:ring-white/10' : ''
       }`}>
         {/* Horizontal Mini Day Selector Strip - Inspired by Tourera Pebble Bar */}
-        <div className="flex items-center justify-between gap-2 pb-4 mb-5 border-b border-slate-200/60 dark:border-white/10 overflow-x-auto scrollbar-thin">
+        <div className="flex items-center justify-between gap-2 pb-4 mb-5 border-b border-slate-200/60 dark:border-white/10 overflow-x-auto scrollbar-none md:scrollbar-thin">
           <div className="flex items-center gap-2 min-w-max">
             {stripDays.map((dayNum) => {
               const dInfo = getDayOfWeek(year, month, dayNum);

@@ -342,6 +342,10 @@ export const JoinLiquidGlassModal: React.FC<JoinLiquidGlassModalProps> = ({
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   Verified Clerk {user.provider.toUpperCase()} Account
                 </div>
+                <div className="mt-1.5 flex items-center justify-center gap-1.5 text-[11px] text-emerald-300 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>Cloud Synchronized (Laptop • Mobile • Tablet)</span>
+                </div>
                 <p className="text-[10px] text-white/50 font-mono mt-1">
                   ID: {user.id.slice(0, 14)}...
                 </p>

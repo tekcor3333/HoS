@@ -30,6 +30,13 @@ import { DailyTaskProgressSection } from './components/DailyTaskProgressSection'
 import { Check, ArrowUpRight } from 'lucide-react';
 import fixedMountainBackdrop from './assets/sky-mountains-black-clouds-wallpaper-preview.jpg';
 import { useAuth, AuthenticateWithRedirectCallback } from './utils/authContext';
+import {
+  migrateAndLoadCloudData,
+  pushUserSync,
+  pollUserUpdates,
+} from './utils/cloudSyncService';
+import { loadDailyTodos, saveDailyTodos } from './utils/dailyTodoStorage';
+import { DailyTodoTask } from './types';
 
 const VALID_VIEWS: AppView[] = [
   'overview',
@@ -127,12 +134,19 @@ const SSOCallbackHandler: React.FC = () => {
 };
 
 export default function App() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, getToken } = useAuth();
 
   const [year, setYear] = useState<number>(2026);
   const [month, setMonth] = useState<number>(11);
 
   const [monthData, setMonthData] = useState<MonthData>(() => loadMonthData(2026, 11));
+  const [dailyTodos, setDailyTodos] = useState<Record<string, DailyTodoTask[]>>(() =>
+    loadDailyTodos()
+  );
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const cloudVersionRef = useRef<number>(0);
+  const pushSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCelestialShowcaseOpen, setIsCelestialShowcaseOpen] = useState<boolean>(false);
   const [isJoinOpen, setIsJoinOpen] = useState<boolean>(false);
@@ -408,15 +422,139 @@ export default function App() {
     }, 3200);
   };
 
+  // 1. Initial Cloud Data Load & Device Migration on user authentication
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      cloudVersionRef.current = 0;
+      return;
+    }
+
+    let isCancelled = false;
+    setCloudSyncStatus('syncing');
+
+    migrateAndLoadCloudData(user.id, getToken, year, month)
+      .then((result) => {
+        if (isCancelled) return;
+        setMonthData(result.monthData);
+        setDailyTodos(result.dailyTodos);
+        cloudVersionRef.current = result.version;
+        setCloudSyncStatus('synced');
+      })
+      .catch((err) => {
+        console.error('Failed to load user cloud data:', err);
+        if (!isCancelled) setCloudSyncStatus('error');
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isAuthenticated, user?.id]);
+
+  // 2. Real-time background sync listener across devices (Laptop, Phone, Tablet)
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+
+    let isCancelled = false;
+    const abortController = new AbortController();
+
+    const checkUpdates = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        const pollRes = await pollUserUpdates(
+          getToken,
+          cloudVersionRef.current,
+          abortController.signal
+        );
+
+        if (isCancelled) return;
+
+        if (pollRes.success && pollRes.hasUpdate && pollRes.data) {
+          const currentMonthKey = `${year}_${month}`;
+          const cloudMonth = pollRes.data.months?.[currentMonthKey];
+          if (cloudMonth) {
+            setMonthData(cloudMonth);
+            saveMonthData(cloudMonth);
+          }
+          if (pollRes.data.dailyTodos) {
+            setDailyTodos(pollRes.data.dailyTodos);
+            saveDailyTodos(pollRes.data.dailyTodos);
+          }
+          cloudVersionRef.current = pollRes.version;
+          setCloudSyncStatus('synced');
+        }
+      } catch {
+        // Suppress background abort/network hiccups
+      }
+    };
+
+    // When phone is unlocked or laptop tab is focused, check immediately
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        checkUpdates();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
+    // Continuous heartbeat check every 6 seconds for multi-device live sync
+    const interval = setInterval(checkUpdates, 6000);
+
+    return () => {
+      isCancelled = true;
+      abortController.abort();
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [isAuthenticated, user?.id, year, month, getToken]);
+
+  // Handle month/year switching
   useEffect(() => {
     const data = loadMonthData(year, month);
     setMonthData(data);
   }, [year, month]);
 
+  // Debounced cloud push queue
+  const queueCloudSync = useCallback(
+    (payload: { monthData?: MonthData; dailyTodos?: Record<string, DailyTodoTask[]> }) => {
+      if (!isAuthenticated) return;
+
+      if (pushSyncTimeoutRef.current) {
+        clearTimeout(pushSyncTimeoutRef.current);
+      }
+
+      setCloudSyncStatus('syncing');
+      pushSyncTimeoutRef.current = setTimeout(async () => {
+        try {
+          const res = await pushUserSync(getToken, payload);
+          if (res.success && res.version) {
+            cloudVersionRef.current = res.version;
+            setCloudSyncStatus('synced');
+          }
+        } catch (err) {
+          console.warn('Sync to cloud error:', err);
+          setCloudSyncStatus('error');
+        }
+      }, 400);
+    },
+    [isAuthenticated, getToken]
+  );
+
   const updateData = (newData: MonthData) => {
     setMonthData(newData);
     saveMonthData(newData);
+    queueCloudSync({ monthData: newData });
   };
+
+  const handleDailyTodosChange = useCallback(
+    (newTodos: Record<string, DailyTodoTask[]>) => {
+      setDailyTodos(newTodos);
+      saveDailyTodos(newTodos);
+      queueCloudSync({ dailyTodos: newTodos });
+    },
+    [queueCloudSync]
+  );
 
   const todayDate = useMemo(() => new Date(2026, 8, 23), []);
   const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
@@ -560,6 +698,7 @@ export default function App() {
     saveMonthData(clonedData);
     setYear(nextY);
     setMonth(nextM);
+    queueCloudSync({ monthData: clonedData });
     showToast(`Cloned ${clonedHabits.length} habits to ${MONTH_NAMES[nextM - 1]} ${nextY}!`);
   };
 
@@ -581,6 +720,7 @@ export default function App() {
 
     saveMonthData(clonedData);
     setMonth(targetMonth);
+    queueCloudSync({ monthData: clonedData });
     showToast(`Setup copied to ${MONTH_NAMES[targetMonth - 1]} ${year}!`);
   };
 
@@ -708,6 +848,7 @@ export default function App() {
           onToggleDarkMode={toggleDarkMode}
           onOpenShowcase={() => setIsCelestialShowcaseOpen(true)}
           onOpenJoin={() => setIsJoinOpen(true)}
+          cloudSyncStatus={cloudSyncStatus}
         />
 
         {/* Main Content Viewport */}
@@ -909,6 +1050,8 @@ export default function App() {
                     setHabitToEdit(null);
                     setIsModalOpen(true);
                   }}
+                  dailyTodos={dailyTodos}
+                  onDailyTodosChange={handleDailyTodosChange}
                 />
               </div>
             )}

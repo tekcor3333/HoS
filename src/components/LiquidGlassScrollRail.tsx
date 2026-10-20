@@ -341,7 +341,7 @@ export const LiquidGlassScrollRail: React.FC<LiquidGlassScrollRailProps> = ({
   return (
     <aside
       aria-label="Liquid Glass Scroll Navigation"
-      className="fixed right-2 sm:right-3 md:right-4 top-3 bottom-3 z-50 flex items-center justify-center select-none pointer-events-none"
+      className="hidden md:flex fixed right-2 sm:right-3 md:right-4 top-3 bottom-3 z-50 items-center justify-center select-none pointer-events-none"
       style={{
         transition: 'opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
