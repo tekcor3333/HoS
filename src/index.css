@@ -9,6 +9,11 @@
     --font-mono: "SF Mono", Monaco, Menlo, Consolas, monospace;
   }
 
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   body {
     font-family: var(--font-sans);
     background-color: #f1f5f9;
@@ -16,6 +21,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
     transition: color 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.35s ease;
   }
 
@@ -23,6 +30,22 @@
     background-color: #0b0c10;
     color: #f7f6f2;
   }
+}
+
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+button, a, input, select, textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Ethereal Zenith Amber-Gold Ambient Glow matching the Littlebird dark theme */
@@ -588,5 +611,109 @@ html::-webkit-scrollbar {
     animation: none;
     opacity: 0;
   }
+}
+
+/* ==========================================================================
+   Task Modal Spring Expand & Morph Transitions (Matching Reference Video)
+   ========================================================================== */
+
+@keyframes taskCardBloomIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.65) translateY(20px);
+    filter: blur(8px);
+  }
+  50% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+  80% {
+    transform: scale(1.015) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes taskCardBloomOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.75) translateY(16px);
+    filter: blur(6px);
+  }
+}
+
+@keyframes taskBackdropFadeIn {
+  0% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+}
+
+@keyframes taskBackdropFadeOut {
+  0% {
+    opacity: 1;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  100% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+}
+
+@keyframes taskContentCascade {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.task-modal-expand-in {
+  animation: taskCardBloomIn 440ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+.task-modal-expand-out {
+  animation: taskCardBloomOut 240ms cubic-bezier(0.3, 0, 0.8, 0.15) forwards;
+  will-change: transform, opacity, filter;
+}
+
+.task-backdrop-enter {
+  animation: taskBackdropFadeIn 360ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.task-backdrop-exit {
+  animation: taskBackdropFadeOut 240ms ease forwards;
+}
+
+.task-cascade-delay-1 {
+  animation: taskContentCascade 380ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
+}
+
+.task-cascade-delay-2 {
+  animation: taskContentCascade 400ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both;
+}
+
+.task-cascade-delay-3 {
+  animation: taskContentCascade 420ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
 }
 

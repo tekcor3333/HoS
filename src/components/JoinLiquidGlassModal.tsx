@@ -220,7 +220,7 @@ export const JoinLiquidGlassModal: React.FC<JoinLiquidGlassModalProps> = ({
       </div>
 
       {/* Top Navigation Overlay Header */}
-      <header className="fixed top-0 inset-x-0 z-10 px-6 sm:px-10 py-5 flex items-center justify-between pointer-events-auto">
+      <header className="fixed top-0 inset-x-0 z-10 px-4 sm:px-10 pt-[max(1rem,env(safe-area-inset-top))] pb-3 sm:py-5 flex items-center justify-between pointer-events-auto">
         {/* Brand mark with website's exact HoS editorial serif logo */}
         <div
           className="flex items-center gap-2.5"
@@ -263,10 +263,11 @@ export const JoinLiquidGlassModal: React.FC<JoinLiquidGlassModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white/90 hover:text-white text-xs font-semibold transition-all cursor-pointer backdrop-blur-md flex items-center gap-1.5"
+            className="px-3 sm:px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white/90 hover:text-white text-xs font-semibold transition-all cursor-pointer backdrop-blur-md flex items-center gap-1.5"
             title="Open HabitOS Inner Dashboard"
           >
-            <span>Open Dashboard</span>
+            <span className="hidden sm:inline">Open </span>
+            <span>Dashboard</span>
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
@@ -286,10 +287,10 @@ export const JoinLiquidGlassModal: React.FC<JoinLiquidGlassModalProps> = ({
       </header>
 
       {/* Main Glass Widget Centerpiece */}
-      <div className="relative z-10 w-full max-w-[430px] my-auto pointer-events-auto">
+      <div className="relative z-10 w-full max-w-[430px] px-3 sm:px-0 my-auto pointer-events-auto">
         {/* Liquid Glass Widget Card - High Transparency showcasing blurry mountain behind */}
         <div
-          className="relative rounded-[38px] p-7 sm:p-9 border shadow-2xl transition-all duration-300 overflow-hidden"
+          className="relative rounded-[28px] sm:rounded-[38px] p-5 sm:p-9 border shadow-2xl transition-all duration-300 overflow-hidden max-h-[86dvh] overflow-y-auto"
           style={{
             background:
               'linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.02) 100%)',

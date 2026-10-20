@@ -26,6 +26,8 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
   activeView,
   onNavigate,
 }) => {
+  const buttonRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
+
   const items: NavItem[] = [
     {
       id: 'overview',
@@ -69,10 +71,18 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
     },
   ];
 
+  // Auto-scroll active navigation button into view on mobile
+  React.useEffect(() => {
+    const activeBtn = buttonRefs.current[activeView];
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeView]);
+
   return (
     <nav
       aria-label="Mobile Navigation Dock"
-      className="md:hidden fixed bottom-2.5 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-16px)] w-auto px-1.5 py-1 rounded-full tourera-floating-bar shadow-2xl flex items-center justify-center gap-0.5 pointer-events-auto overflow-x-auto scrollbar-none"
+      className="md:hidden fixed bottom-[max(0.6rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-12px)] w-auto px-1.5 py-1 rounded-full tourera-floating-bar shadow-2xl flex items-center justify-start sm:justify-center gap-0.5 pointer-events-auto overflow-x-auto scrollbar-none touch-pan-x select-none"
       style={{
         backdropFilter: 'blur(36px) saturate(200%)',
         WebkitBackdropFilter: 'blur(36px) saturate(200%)',
@@ -83,18 +93,21 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
         return (
           <button
             key={item.id}
+            ref={(el) => {
+              buttonRefs.current[item.id] = el;
+            }}
             type="button"
             data-nav-tab={item.id}
             onClick={(e) => onNavigate(item.id, e.currentTarget.getBoundingClientRect())}
-            className={`relative flex flex-col items-center justify-center px-2 py-1.5 rounded-full transition-all duration-200 cursor-pointer shrink-0 ${
+            className={`relative flex flex-col items-center justify-center px-2 sm:px-2.5 py-1 rounded-full transition-all duration-200 cursor-pointer shrink-0 min-w-[44px] min-h-[44px] ${
               isActive
                 ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950 font-bold shadow-sm'
-                : 'text-slate-600 dark:text-white/70 hover:text-slate-950 dark:hover:text-white'
+                : 'text-slate-600 dark:text-white/70 hover:text-slate-950 dark:hover:text-white active:bg-black/5 dark:active:bg-white/10'
             }`}
             title={item.label}
           >
             {item.icon}
-            <span className="text-[9px] leading-tight font-medium mt-0.5 tracking-tight">
+            <span className="text-[9px] leading-tight font-medium mt-0.5 tracking-tight whitespace-nowrap">
               {item.label}
             </span>
           </button>

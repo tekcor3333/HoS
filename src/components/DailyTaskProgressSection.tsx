@@ -20,7 +20,7 @@ import {
   Edit2,
   Copy,
   X,
-  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import confetti from 'canvas-confetti';
@@ -82,8 +82,21 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
   const [copyingFromDate, setCopyingFromDate] = useState<string | null>(null);
   const [copyTargetDate, setCopyTargetDate] = useState<string>('');
 
-  // Fullscreen expanded day card modal state
+  // Fullscreen expanded day card modal state with smooth spring animation
   const [fullScreenDayDate, setFullScreenDayDate] = useState<string | null>(null);
+  const [modalOrigin, setModalOrigin] = useState<{ x: number; y: number } | null>(null);
+  const [isModalClosing, setIsModalClosing] = useState<boolean>(false);
+
+  // Smooth close handler matching video collapse
+  const handleCloseModal = useCallback(() => {
+    if (isModalClosing) return;
+    setIsModalClosing(true);
+    setTimeout(() => {
+      setFullScreenDayDate(null);
+      setIsModalClosing(false);
+      setModalOrigin(null);
+    }, 240);
+  }, [isModalClosing]);
 
   // Close full screen day modal on Escape key and lock body scroll
   useEffect(() => {
@@ -91,7 +104,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setFullScreenDayDate(null);
+        handleCloseModal();
       }
     };
 
@@ -103,7 +116,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
       document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [fullScreenDayDate]);
+  }, [fullScreenDayDate, handleCloseModal]);
 
   // Initial week based on current day or Week 1
   const initialWeek = useMemo(() => {
@@ -526,7 +539,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            className="tourera-glass-card no-hover-lift hover:!transform-none hover:!translate-y-0 p-1 rounded-full relative flex items-center border border-white/80 dark:border-white/15 shadow-sm select-none cursor-pointer group gap-0.5"
+            className="tourera-glass-card no-hover-lift hover:!transform-none hover:!translate-y-0 p-1 rounded-full relative flex items-center border border-white/80 dark:border-white/15 shadow-sm select-none cursor-pointer group gap-0.5 max-w-full overflow-x-auto scrollbar-none touch-pan-x"
             title="Slide to browse and switch weeks"
           >
             {/* Draggable Liquid Moving Water Bar */}
@@ -638,7 +651,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
 
       {/* Main Horizontal Daily Cards Row */}
       {/* On desktop: clean 7-column horizontal layout; On mobile/tablet: smooth horizontal scroll without ugly scrollbar */}
-      <div className="w-full overflow-x-auto scrollbar-none md:scrollbar-thin pt-3 pb-6 -mx-2 px-2 sm:mx-0 sm:px-0">
+      <div className="w-full overflow-x-auto scrollbar-none md:scrollbar-thin pt-3 pb-6 -mx-2 px-2 sm:mx-0 sm:px-0 touch-pan-x overscroll-x-contain">
         <div className="flex lg:grid lg:grid-cols-7 gap-3.5 min-w-max lg:min-w-0">
           {displayedDays.map((day) => {
             const dateKey = formatDateKey(year, month, day);
@@ -678,10 +691,16 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                   ) {
                     return;
                   }
-                  // Open this specific day in full-screen expanded view
+                  // Calculate card center position for smooth expanding spring origin
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const originX = rect.left + rect.width / 2;
+                  const originY = rect.top + rect.height / 2;
+                  setModalOrigin({ x: originX, y: originY });
+                  setIsModalClosing(false);
+                  // Open this specific day in full-screen expanded view with video-matching bloom
                   setFullScreenDayDate(dateKey);
                 }}
-                className={`tourera-glass-card tourera-day-card group/daycard rounded-3xl p-4 flex flex-col justify-between w-[220px] sm:w-[235px] lg:w-auto shrink-0 lg:shrink relative cursor-pointer select-none transition-all duration-200 hover:-translate-y-1.5 hover:shadow-2xl z-0 ${
+                className={`tourera-glass-card tourera-day-card group/daycard rounded-3xl p-4 flex flex-col justify-between w-[80vw] max-w-[250px] sm:w-[235px] lg:w-auto shrink-0 lg:shrink relative cursor-pointer select-none transition-all duration-200 hover:-translate-y-1.5 hover:shadow-2xl active:scale-[0.98] z-0 ${
                   isToday
                     ? 'ring-2 ring-slate-900/60 dark:ring-0 dark:littlebird-active-tile bg-white/85 shadow-lg'
                     : percentage > 0
@@ -711,21 +730,6 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                   </div>
 
                   <div className="flex items-center gap-1">
-                    {/* Expand Fullscreen Button */}
-                    <button
-                      type="button"
-                      title={`Expand ${dayName} full screen`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFullScreenDayDate(dateKey);
-                      }}
-                      className="px-1.5 py-1 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white bg-slate-100/90 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 transition-all cursor-pointer flex items-center gap-1 border border-slate-200/60 dark:border-white/10 shadow-2xs"
-                      aria-label={`Expand ${dayName} full screen`}
-                    >
-                      <Maximize2 className="w-3 h-3" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">Expand</span>
-                    </button>
-
                     {/* Copy to Date Button */}
                     <button
                       type="button"
@@ -973,7 +977,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                           </div>
 
                           {/* Task Action Controls (Edit & Delete) */}
-                          <div className="opacity-0 group-hover/task:opacity-100 focus-within:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
+                          <div className="opacity-90 sm:opacity-0 group-hover/task:opacity-100 focus-within:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
                             <button
                               type="button"
                               onClick={(e) => {
@@ -981,9 +985,9 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                                 handleStartEdit(dateKey, task);
                               }}
                               title="Edit task"
-                              className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-950 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
                             >
-                              <Edit2 className="w-2.5 h-2.5" />
+                              <Edit2 className="w-3 h-3" />
                             </button>
                             <button
                               type="button"
@@ -992,9 +996,9 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                                 handleDeleteTask(dateKey, task.id);
                               }}
                               title="Delete task"
-                              className="p-1 rounded-md text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
                             >
-                              <Trash2 className="w-2.5 h-2.5" />
+                              <Trash2 className="w-3 h-3" />
                             </button>
                           </div>
                         </div>
@@ -1022,12 +1026,6 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                         </button>
                       </div>
                     )}
-                  </div>
-
-                  {/* Visual Cue: Click to expand full screen */}
-                  <div className="mt-2.5 pt-2 border-t border-slate-200/50 dark:border-white/5 flex items-center justify-center gap-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-400 group-hover/daycard:text-slate-900 dark:group-hover/daycard:text-[#f6da7e] transition-colors pointer-events-none">
-                    <Maximize2 className="w-3 h-3 shrink-0" />
-                    <span>Click card to expand full screen</span>
                   </div>
 
                   {/* Inline Add Task Form for this Specific Day */}
@@ -1087,7 +1085,8 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                   {!isAddingThisDay && tasks.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setAddingTaskForDate(dateKey);
                         setNewTaskTitle('');
                         setNewTaskDesc('');
@@ -1190,55 +1189,62 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
 
             return (
               <div
-                className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 md:p-8 animate-in fade-in duration-200"
+                className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 md:p-8"
                 role="dialog"
                 aria-modal="true"
                 aria-label={`${modalDayName} task details`}
               >
                 {/* 1. STRONG LIQUID GLASS BACKDROP BLUR */}
                 <div
-                  className="fixed inset-0 bg-slate-950/60 dark:bg-black/75 backdrop-blur-xl transition-opacity cursor-pointer"
-                  onClick={() => setFullScreenDayDate(null)}
+                  className={`fixed inset-0 bg-slate-950/60 dark:bg-black/75 backdrop-blur-xl cursor-pointer ${
+                    isModalClosing ? 'task-backdrop-exit' : 'task-backdrop-enter'
+                  }`}
+                  onClick={handleCloseModal}
                 />
 
-                {/* 2. FULLSCREEN EXPANDED CARD CONTAINER (90-95% viewport width, 90-95% viewport height) */}
+                {/* 2. FULLSCREEN EXPANDED CARD CONTAINER (Blooming fluidly from clicked card origin) */}
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="relative w-[95vw] h-[93vh] max-w-[1400px] flex flex-col rounded-3xl sm:rounded-4xl bg-white/95 dark:bg-[#12141c]/95 border border-white/80 dark:border-[#f6da7e]/40 shadow-[0_32px_80px_rgba(0,0,0,0.55)] dark:shadow-[0_0_60px_rgba(246,218,126,0.22)] backdrop-blur-2xl overflow-hidden animate-in zoom-in-95 duration-200 select-text"
+                  style={{
+                    transformOrigin: modalOrigin ? `${modalOrigin.x}px ${modalOrigin.y}px` : 'center center',
+                  }}
+                  className={`relative w-[calc(100vw-12px)] sm:w-[95vw] h-[calc(100dvh-16px)] sm:h-[93vh] max-w-[1400px] flex flex-col rounded-2xl sm:rounded-4xl bg-white/95 dark:bg-[#12141c]/95 border border-white/80 dark:border-[#f6da7e]/40 shadow-[0_32px_80px_rgba(0,0,0,0.55)] dark:shadow-[0_0_60px_rgba(246,218,126,0.22)] backdrop-blur-2xl overflow-hidden select-text ${
+                    isModalClosing ? 'task-modal-expand-out' : 'task-modal-expand-in'
+                  }`}
                 >
                   {/* Top Specular Rim Reflection */}
                   <div className="absolute top-0 inset-x-8 h-[2px] bg-gradient-to-r from-transparent via-white dark:via-[#f6da7e]/70 to-transparent pointer-events-none" />
 
                   {/* MODAL HEADER */}
-                  <div className="px-6 sm:px-8 py-5 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-4 bg-white/40 dark:bg-white/[0.03]">
-                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-900/5 dark:bg-white/10 border border-slate-200/80 dark:border-white/10 flex items-center justify-center shrink-0">
-                        <Calendar className="w-6 h-6 text-slate-800 dark:text-[#f6da7e]" />
+                  <div className="px-3.5 sm:px-8 py-3 sm:py-5 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-2 sm:gap-4 bg-white/40 dark:bg-white/[0.03]">
+                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-900/5 dark:bg-white/10 border border-slate-200/80 dark:border-white/10 flex items-center justify-center shrink-0">
+                        <Calendar className="w-4 h-4 sm:w-6 sm:h-6 text-slate-800 dark:text-[#f6da7e]" />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <h2 className="text-base sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-wider truncate">
                             {modalDayName}
                           </h2>
                           {isModalToday && (
-                            <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-md bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs">
+                            <span className="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider rounded-md bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs shrink-0">
                               Today
                             </span>
                           )}
                           {modalIsAllCompleted && (
-                            <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-md bg-emerald-500/15 dark:bg-emerald-400/20 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                            <span className="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider rounded-md bg-emerald-500/15 dark:bg-emerald-400/20 text-emerald-700 dark:text-emerald-300 flex items-center gap-1 shrink-0">
                               <Sparkles className="w-3 h-3" /> All Done!
                             </span>
                           )}
                         </div>
-                        <div className="text-xs sm:text-sm font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-                          {modalFormattedDate} • {modalTotalTasks} {modalTotalTasks === 1 ? 'task' : 'tasks'} planned
+                        <div className="text-[10px] sm:text-sm font-mono text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                          {modalFormattedDate} • {modalTotalTasks} {modalTotalTasks === 1 ? 'task' : 'tasks'}
                         </div>
                       </div>
                     </div>
 
                     {/* Controls & Close Button */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => {
@@ -1247,28 +1253,29 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                           setNewTaskDesc('');
                           setNewTaskPriority('medium');
                         }}
-                        className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-900 dark:text-white bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl text-xs font-bold text-slate-900 dark:text-white bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Add Task</span>
+                        <span className="hidden sm:inline">Add Task</span>
+                        <span className="sm:hidden">Add</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => setFullScreenDayDate(null)}
+                        onClick={handleCloseModal}
                         aria-label="Close expanded view"
-                        className="h-10 px-3.5 rounded-2xl flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-800 dark:text-slate-100 hover:text-slate-950 dark:hover:text-white border border-slate-200/80 dark:border-white/15 transition-colors cursor-pointer shadow-xs text-xs font-bold"
+                        className="h-9 sm:h-10 px-2.5 sm:px-3.5 rounded-2xl flex items-center gap-1 sm:gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-800 dark:text-slate-100 hover:text-slate-950 dark:hover:text-white border border-slate-200/80 dark:border-white/15 transition-colors cursor-pointer shadow-xs text-xs font-bold"
                       >
-                        <X className="w-4 h-4 stroke-[2.5]" />
+                        <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
                         <span>Close</span>
                       </button>
                     </div>
                   </div>
 
                   {/* MODAL SCROLLABLE BODY */}
-                  <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6">
+                  <div className="p-3.5 sm:p-8 overflow-y-auto flex-1 space-y-4 sm:space-y-6">
                     {/* STATS OVERVIEW CARDS */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 task-cascade-delay-1">
                       {/* 1. Large Circular Progress Ring */}
                       <div className="p-4 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-4">
                         <div className="relative flex items-center justify-center w-20 h-20 shrink-0">
@@ -1433,7 +1440,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                     )}
 
                     {/* COMPLETE FULL-WIDTH TASK LIST */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 task-cascade-delay-2">
                       <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider px-1">
                         <span>Checklist ({modalCompletedCount}/{modalTotalTasks} completed)</span>
                         {!isAddingModal && (
@@ -1550,13 +1557,13 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                                   type="button"
                                   onClick={() => handleToggleTask(fullScreenDayDate, task.id)}
                                   aria-label={task.completed ? 'Mark task incomplete' : 'Mark task completed'}
-                                  className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
+                                  className={`w-7 h-7 sm:w-6 sm:h-6 rounded-lg sm:rounded-md flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
                                     task.completed
                                       ? 'bg-slate-900 text-white dark:bg-[#f6da7e] dark:text-slate-950 shadow-xs'
                                       : 'border-2 border-slate-300 dark:border-white/30 hover:border-slate-600 dark:hover:border-white/60 bg-transparent'
                                   }`}
                                 >
-                                  {task.completed && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
+                                  {task.completed && <Check className="w-4 h-4 sm:w-3.5 sm:h-3.5 stroke-[3.5]" />}
                                 </button>
 
                                 <div className="min-w-0 flex-1">
@@ -1596,7 +1603,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                                   type="button"
                                   onClick={() => handleStartEdit(fullScreenDayDate, task)}
                                   title="Edit task"
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                  className="p-2 sm:p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
                                 >
                                   <Edit2 className="w-4 h-4" />
                                 </button>
@@ -1604,7 +1611,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                                   type="button"
                                   onClick={() => handleDeleteTask(fullScreenDayDate, task.id)}
                                   title="Delete task"
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                                  className="p-2 sm:p-1.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -1628,8 +1635,8 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
 
                     <button
                       type="button"
-                      onClick={() => setFullScreenDayDate(null)}
-                      className="px-4 py-1.5 rounded-xl text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-950 cursor-pointer shadow-xs"
+                      onClick={handleCloseModal}
+                      className="px-4 py-1.5 rounded-xl text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-950 cursor-pointer shadow-xs hover:opacity-90 transition-opacity"
                     >
                       Close
                     </button>

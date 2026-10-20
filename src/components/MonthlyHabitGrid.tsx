@@ -82,19 +82,19 @@ export const MonthlyHabitGrid: React.FC<MonthlyHabitGridProps> = ({
       </div>
 
       {/* Main Transparent Table Sheet */}
-      <div className="tourera-glass-card rounded-3xl overflow-hidden border border-white/90 dark:border-white/10 shadow-md">
-        <div className="overflow-x-auto scrollbar-none md:scrollbar-thin">
+      <div className="tourera-glass-card rounded-2xl sm:rounded-3xl overflow-hidden border border-white/90 dark:border-white/10 shadow-md">
+        <div className="overflow-x-auto scrollbar-none md:scrollbar-thin touch-pan-x">
           <table className="w-full text-xs text-slate-900 dark:text-slate-100 border-collapse select-none">
             {/* Week Headers Row */}
             <thead>
               <tr className="tourera-table-header border-b border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-slate-200">
                 <th
                   rowSpan={2}
-                  className="sticky left-0 z-20 tourera-table-sticky-col border-r border-slate-200/80 dark:border-white/10 p-3.5 text-left font-bold text-slate-900 dark:text-white w-52 min-w-[210px]"
+                  className="sticky left-0 z-20 tourera-table-sticky-col border-r border-slate-200/80 dark:border-white/10 p-2 sm:p-3.5 text-left font-bold text-slate-900 dark:text-white w-28 min-[380px]:w-36 sm:w-52 min-w-[116px] min-[380px]:min-w-[140px] sm:min-w-[210px]"
                 >
                   <div className="flex items-center justify-between">
                     <span>Habits</span>
-                    <span className="text-[10px] font-normal text-slate-500 dark:text-slate-300 font-mono">
+                    <span className="text-[10px] font-normal text-slate-500 dark:text-slate-300 font-mono hidden sm:inline">
                       (tap cell)
                     </span>
                   </div>
@@ -193,22 +193,22 @@ export const MonthlyHabitGrid: React.FC<MonthlyHabitGridProps> = ({
                     className="hover:bg-slate-50/70 dark:hover:bg-white/5 transition-colors group"
                   >
                     {/* Sticky Habit Column */}
-                    <td className="sticky left-0 z-10 tourera-table-sticky-col group-hover:bg-white dark:group-hover:bg-slate-800/80 border-r border-slate-200/80 dark:border-white/10 py-2.5 px-3.5 text-slate-900 dark:text-white font-medium">
-                      <div className="flex items-center justify-between gap-1.5">
-                        <div className="flex items-center gap-2 truncate">
-                          <span className="text-base select-none shrink-0">
+                    <td className="sticky left-0 z-10 tourera-table-sticky-col group-hover:bg-white dark:group-hover:bg-slate-800/80 border-r border-slate-200/80 dark:border-white/10 py-2 sm:py-2.5 px-2 sm:px-3.5 text-slate-900 dark:text-white font-medium">
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5 sm:gap-2 truncate">
+                          <span className="text-sm sm:text-base select-none shrink-0">
                             {habit.emoji}
                           </span>
                           <span
-                            className="truncate text-xs font-bold text-slate-900 dark:text-white"
+                            className="truncate text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white"
                             title={habit.name}
                           >
                             {habit.name}
                           </span>
                         </div>
 
-                        {/* Actions */}
-                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
+                        {/* Actions - visible on mobile touch, subtle hover on desktop */}
+                        <div className="opacity-70 sm:opacity-0 group-hover:opacity-100 flex items-center gap-0.5 sm:gap-1 transition-opacity shrink-0">
                           <button
                             onClick={() => onEditHabit(habit)}
                             title="Edit habit"
@@ -241,7 +241,7 @@ export const MonthlyHabitGrid: React.FC<MonthlyHabitGridProps> = ({
                             isToday ? 'bg-slate-900/5 dark:bg-white/5' : ''
                           } hover:bg-white dark:hover:bg-white/10`}
                         >
-                          <div className="w-full h-8 flex items-center justify-center">
+                          <div className="w-full h-9 sm:h-8 flex items-center justify-center">
                             <div
                               className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
                                 isDone

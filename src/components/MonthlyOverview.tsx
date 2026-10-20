@@ -52,6 +52,10 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
     if (!isSliding) {
       updatePillToMonth(month);
     }
+    const btn = monthButtonRefs.current[month - 1];
+    if (btn && trackRef.current && window.innerWidth < 1024) {
+      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
   }, [month, isSliding, updatePillToMonth]);
 
   useEffect(() => {
@@ -154,10 +158,10 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
   return (
     <section id="overview" className="mb-8 relative">
       {/* 1. Breadcrumb & Year Selector */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 font-medium tourera-glass-card px-3.5 py-1.5 rounded-full">
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 font-medium tourera-glass-card px-2.5 sm:px-3.5 py-1.5 rounded-full min-w-0 truncate">
           <span
-            className="font-bold tracking-tight text-slate-950 dark:text-white text-sm"
+            className="font-bold tracking-tight text-slate-950 dark:text-white text-xs sm:text-sm shrink-0"
             style={{
               fontFamily: '"Bodoni Moda", "Playfair Display", "DM Serif Display", "Times New Roman", serif',
             }}
@@ -165,12 +169,12 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
             HoS
           </span>
           <span className="text-slate-300 dark:text-slate-600">/</span>
-          <span>Workspace</span>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <span className="text-slate-900 dark:text-white font-bold">{currentMonthName} {year}</span>
+          <span className="hidden min-[380px]:inline">Workspace</span>
+          <span className="text-slate-300 dark:text-slate-600 hidden min-[380px]:inline">/</span>
+          <span className="text-slate-900 dark:text-white font-bold truncate">{currentMonthName} {year}</span>
         </div>
 
-        <div className="flex items-center gap-1 tourera-glass-card p-1 rounded-full border border-white/80 dark:border-white/15 shadow-xs">
+        <div className="flex items-center gap-0.5 sm:gap-1 tourera-glass-card p-1 rounded-full border border-white/80 dark:border-white/15 shadow-xs shrink-0">
           <button
             onClick={handlePrevMonth}
             title="Previous month"
@@ -178,7 +182,7 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          <span className="px-2.5 text-xs font-bold text-slate-900 dark:text-white font-mono">
+          <span className="px-1.5 sm:px-2.5 text-xs font-bold text-slate-900 dark:text-white font-mono">
             {year}
           </span>
           <button
@@ -192,10 +196,10 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
       </div>
 
       {/* 2. Hero Header Area (Matching reference screenshot typography hierarchy) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
         <div>
           <h1
-            className="text-3xl sm:text-5xl font-semibold tracking-tight text-slate-900 dark:text-white"
+            className="text-2xl min-[360px]:text-3xl sm:text-5xl font-semibold tracking-tight text-slate-900 dark:text-white"
             style={{
               fontFamily: '"Bodoni Moda", "Playfair Display", "Cinzel", "Newsreader", "DM Serif Display", Georgia, serif',
               letterSpacing: '-0.02em',
@@ -203,15 +207,15 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
           >
             My Habit Tracker
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-[#ecdab4] font-serif italic mt-1.5">
+          <p className="text-xs sm:text-base text-slate-600 dark:text-[#ecdab4] font-serif italic mt-1.5">
             Build unbreakable daily rhythm. Even on the days you want to slow down.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             onClick={onDuplicateMonth}
-            className="tourera-pill-btn-white px-4 py-2 font-bold text-xs text-slate-900 rounded-full transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            className="tourera-pill-btn-white px-3.5 sm:px-4 py-2 font-bold text-xs text-slate-900 rounded-full transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
           >
             <Copy className="w-3.5 h-3.5 text-slate-700 dark:text-slate-800 shrink-0" />
             <span>Clone habits</span>
@@ -220,16 +224,17 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
       </div>
 
       {/* 3. Symmetrically Aligned Month Switcher Bar with Liquid Moving Water Capsule */}
-      <div className="w-full flex justify-center py-2.5 mb-6 overflow-x-auto scrollbar-none">
+      <div className="w-full flex justify-start lg:justify-center py-2.5 mb-6 overflow-x-auto scrollbar-none px-1 touch-pan-x">
         <div
           ref={trackRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="tourera-glass-card no-hover-lift hover:!transform-none hover:!translate-y-0 p-1.5 rounded-full relative flex items-center justify-between border border-white/80 dark:border-white/15 shadow-sm max-w-full select-none cursor-pointer group"
+          className="tourera-glass-card no-hover-lift hover:!transform-none hover:!translate-y-0 p-1.5 rounded-full relative flex items-center justify-between border border-white/80 dark:border-white/15 shadow-sm select-none cursor-pointer group shrink-0"
           style={{
             width: '949.888px',
+            maxWidth: 'none',
             transform: 'none',
           }}
           title="Slide to browse and open any month"
@@ -298,11 +303,11 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
       </div>
 
       {/* 4. High-Contrast Tourera Hero Card */}
-      <div className="tourera-dark-card rounded-3xl p-6 sm:p-7 relative overflow-hidden text-slate-900 dark:text-white">
+      <div className="tourera-dark-card rounded-2xl sm:rounded-3xl p-4.5 sm:p-7 relative overflow-hidden text-slate-900 dark:text-white">
         {/* Subtle Specular Top Reflection */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6 relative z-10">
           {/* Left: Month title & Counts */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -314,25 +319,25 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 text-xs">
-              <div className="bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-2xl border border-slate-900/10 dark:border-white/10">
-                <div className="text-slate-600 dark:text-slate-300 font-medium">Number of habits</div>
-                <div className="text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-0.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-6 text-xs">
+              <div className="bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-slate-900/10 dark:border-white/10">
+                <div className="text-slate-600 dark:text-slate-300 font-medium text-[11px] sm:text-xs">Number of habits</div>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-0.5">
                   {stats.totalHabits}
                 </div>
               </div>
-              <div className="bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-2xl border border-slate-900/10 dark:border-white/10">
-                <div className="text-slate-600 dark:text-slate-300 font-medium">Completed check-ins</div>
-                <div className="text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-0.5 flex items-baseline gap-1">
+              <div className="bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-slate-900/10 dark:border-white/10">
+                <div className="text-slate-600 dark:text-slate-300 font-medium text-[11px] sm:text-xs">Completed check-ins</div>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-0.5 flex items-baseline gap-1">
                   <span>{stats.totalCompletedCheckins}</span>
                   <span className="text-xs font-normal text-slate-500 dark:text-slate-300">
                     / {stats.totalPossibleCheckins}
                   </span>
                 </div>
               </div>
-              <div className="col-span-2 sm:col-span-1 bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-2xl border border-slate-900/10 dark:border-white/10">
-                <div className="text-slate-600 dark:text-slate-300 font-medium">Remaining to 100%</div>
-                <div className="text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-0.5">
+              <div className="col-span-2 sm:col-span-1 bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-slate-900/10 dark:border-white/10">
+                <div className="text-slate-600 dark:text-slate-300 font-medium text-[11px] sm:text-xs">Remaining to 100%</div>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-0.5">
                   {Math.max(0, stats.totalPossibleCheckins - stats.totalCompletedCheckins)}
                 </div>
               </div>
@@ -340,7 +345,7 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
           </div>
 
           {/* Right: Floating Tourera Liquid Glass Progress Box */}
-          <div className="lg:min-w-[340px] flex flex-col justify-center bg-white/70 dark:bg-white/10 backdrop-blur-xl p-5 rounded-3xl border border-white/80 dark:border-white/20 shadow-xl">
+          <div className="w-full lg:w-auto lg:min-w-[340px] flex flex-col justify-center bg-white/70 dark:bg-white/10 backdrop-blur-xl p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/80 dark:border-white/20 shadow-xl">
             <div className="flex items-baseline justify-between mb-2.5">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 Progress in %

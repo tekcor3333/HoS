@@ -831,7 +831,7 @@ export default function App() {
       </div>
 
       {/* 3. SCROLLING WEBSITE CONTENT LAYER — Floating Liquid Glass UI moves across the still photo */}
-      <div className="relative z-10 flex flex-col flex-1">
+      <div className="relative z-10 flex flex-col flex-1 w-full overflow-x-hidden max-w-full">
         {/* Tourera Signature Floating Pill Top Navigation */}
         <TopNavigation
           activeView={activeView}
@@ -852,10 +852,10 @@ export default function App() {
         />
 
         {/* Main Content Viewport */}
-        <main className="relative z-10 flex-1 max-w-[min(90vw,1390px)] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-16 md:pb-8">
+        <main className="relative z-10 flex-1 w-full max-w-[1390px] mx-auto px-3 sm:px-6 lg:px-8 pt-[calc(4.25rem+env(safe-area-inset-top,0px))] sm:pt-20 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-12">
           {/* Toast Alert */}
           {toastMessage && (
-            <div className="fixed bottom-20 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-3 border border-white/20">
+            <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-3 border border-white/20">
               <div className="w-5 h-5 rounded-full bg-white text-slate-950 flex items-center justify-center font-black">
                 <Check className="w-3.5 h-3.5" />
               </div>
@@ -888,12 +888,12 @@ export default function App() {
                 />
 
                 {/* Quick App Launch Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 sm:gap-3 pt-1">
                   <button
                     type="button"
                     data-nav-tab="check-in"
                     onClick={(e) => handleNavigate('check-in', e.currentTarget.getBoundingClientRect())}
-                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                    className="tourera-glass-card p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
@@ -911,7 +911,7 @@ export default function App() {
                     type="button"
                     data-nav-tab="tasks"
                     onClick={(e) => handleNavigate('tasks', e.currentTarget.getBoundingClientRect())}
-                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                    className="tourera-glass-card p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
@@ -929,7 +929,7 @@ export default function App() {
                     type="button"
                     data-nav-tab="grid"
                     onClick={(e) => handleNavigate('grid', e.currentTarget.getBoundingClientRect())}
-                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                    className="tourera-glass-card p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
@@ -947,7 +947,7 @@ export default function App() {
                     type="button"
                     data-nav-tab="weekly"
                     onClick={(e) => handleNavigate('weekly', e.currentTarget.getBoundingClientRect())}
-                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                    className="tourera-glass-card p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
@@ -965,7 +965,7 @@ export default function App() {
                     type="button"
                     data-nav-tab="analysis"
                     onClick={(e) => handleNavigate('analysis', e.currentTarget.getBoundingClientRect())}
-                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                    className="tourera-glass-card p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
@@ -983,7 +983,7 @@ export default function App() {
                     type="button"
                     data-nav-tab="goals"
                     onClick={(e) => handleNavigate('goals', e.currentTarget.getBoundingClientRect())}
-                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                    className="tourera-glass-card p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">
@@ -1001,7 +1001,7 @@ export default function App() {
                     type="button"
                     data-nav-tab="history"
                     onClick={(e) => handleNavigate('history', e.currentTarget.getBoundingClientRect())}
-                    className="tourera-glass-card p-4 rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                    className="tourera-glass-card p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-white/60 dark:border-white/10 text-left hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group shadow-xs hover:shadow-md col-span-2 sm:col-span-1"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="w-8 h-8 rounded-2xl bg-slate-900/10 dark:bg-white/10 flex items-center justify-center text-sm font-bold">

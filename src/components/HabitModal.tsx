@@ -73,8 +73,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xl animate-in fade-in">
-      <div className="bg-white/95 dark:bg-slate-900/95 rounded-3xl shadow-2xl max-w-md w-full p-6 relative border border-white dark:border-white/15">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xl animate-in fade-in">
+      <div className="bg-white/95 dark:bg-slate-900/95 rounded-2xl sm:rounded-3xl shadow-2xl max-w-md w-full p-4.5 sm:p-6 relative border border-white dark:border-white/15 max-h-[92dvh] overflow-y-auto">
         <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-white/10">
           <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
             {habitToEdit ? 'Edit Habit' : 'Create New Habit'}
@@ -189,13 +189,13 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white rounded-full transition-colors cursor-pointer"
+              className="px-4 py-2.5 sm:py-2 min-h-[42px] sm:min-h-0 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white rounded-full transition-colors cursor-pointer flex items-center justify-center"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white dark:text-[#0f1013] bg-slate-900 dark:bg-[#faf6ee] hover:bg-slate-800 dark:hover:bg-white dark:border dark:border-[#f6da7e]/40 dark:shadow-[0_0_12px_rgba(246,218,126,0.3)] rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-5 py-2.5 sm:py-2 min-h-[42px] sm:min-h-0 text-xs font-bold text-white dark:text-[#0f1013] bg-slate-900 dark:bg-[#faf6ee] hover:bg-slate-800 dark:hover:bg-white dark:border dark:border-[#f6da7e]/40 dark:shadow-[0_0_12px_rgba(246,218,126,0.3)] rounded-full transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Check className="w-3.5 h-3.5" />
               <span>{habitToEdit ? 'Save Changes' : 'Add Habit'}</span>

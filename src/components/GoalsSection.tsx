@@ -65,7 +65,7 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
         </button>
       </div>
 
-      <div className="tourera-glass-card rounded-3xl p-6 border border-white/90 dark:border-white/10 shadow-md">
+      <div className="tourera-glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-white/90 dark:border-white/10 shadow-md">
         {isEditing ? (
           <div className="space-y-4 text-xs">
             <div>
@@ -155,12 +155,12 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Primary Objective
                 </span>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white mt-0.5">
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-0.5">
                   {goals.mainGoal || 'Set your primary monthly goal...'}
                 </h3>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
                 <div className="text-right">
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Completion Target</div>
                   <div className="text-base font-mono font-black text-slate-900 dark:text-white">

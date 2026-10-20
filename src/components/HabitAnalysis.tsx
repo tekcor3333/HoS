@@ -281,7 +281,7 @@ export const HabitAnalysis: React.FC<HabitAnalysisProps> = ({ habitStats }) => {
   return (
     <section id="habit-analysis" className="mb-8">
       {/* Symmetrically Centered Category Switcher Bar with Upper Liquid Bar Styling & Thickness */}
-      <div className="w-full flex justify-center py-2.5 mb-5 overflow-x-auto scrollbar-none">
+      <div className="w-full flex justify-start sm:justify-center py-2.5 mb-5 overflow-x-auto scrollbar-none px-1 touch-pan-x">
         <div
           ref={trackRef}
           onPointerDown={handlePointerDown}
@@ -348,7 +348,7 @@ export const HabitAnalysis: React.FC<HabitAnalysisProps> = ({ habitStats }) => {
 
       {/* Analysis Table Sheet */}
       <div className="tourera-glass-card rounded-3xl overflow-hidden border border-white/90 dark:border-white/10 shadow-md">
-        <div className="overflow-x-auto scrollbar-glass">
+        <div className="overflow-x-auto scrollbar-none md:scrollbar-glass touch-pan-x">
           <table className="w-full text-left text-xs text-slate-900 dark:text-slate-100 border-collapse">
             <thead>
               <tr className="bg-slate-100/80 dark:bg-white/5 border-b border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-300 font-bold select-none">

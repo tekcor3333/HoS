@@ -26,7 +26,7 @@ export const MonthlyHistory: React.FC<MonthlyHistoryProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
         {MONTH_NAMES.map((name, index) => {
           const mNum = index + 1;
           const isSelected = mNum === currentMonth;
@@ -53,7 +53,7 @@ export const MonthlyHistory: React.FC<MonthlyHistoryProps> = ({
           return (
             <div
               key={name}
-              className={`p-4.5 rounded-3xl border transition-all flex flex-col justify-between ${
+              className={`p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border transition-all flex flex-col justify-between ${
                 isSelected
                   ? 'bg-white dark:bg-slate-800 border-slate-900/40 dark:border-white/40 shadow-md ring-2 ring-slate-900/10 dark:ring-white/10'
                   : 'tourera-glass-card hover:bg-white dark:hover:bg-slate-900/60'
