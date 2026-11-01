@@ -442,27 +442,27 @@ export const HabitAnalysis: React.FC<HabitAnalysisProps> = ({ habitStats }) => {
                     </td>
 
                     {/* Goal */}
-                    <td className="py-3 px-3 text-center font-mono tabular-nums text-slate-700 dark:text-slate-300 font-medium">
+                    <td className="py-3 px-3 text-center font-num font-semibold text-slate-700 dark:text-slate-300">
                       {stat.targetDays}
                     </td>
 
                     {/* Actual / Completed */}
-                    <td className="py-3 px-3 text-center font-mono tabular-nums font-black text-slate-950 dark:text-white bg-slate-100/40 dark:bg-white/5">
+                    <td className="py-3 px-3 text-center font-num font-extrabold text-slate-950 dark:text-white bg-slate-100/40 dark:bg-white/5">
                       {stat.completedDays}
                     </td>
 
                     {/* Missed */}
-                    <td className="py-3 px-3 text-center font-mono tabular-nums text-slate-500 dark:text-slate-400">
+                    <td className="py-3 px-3 text-center font-num font-medium text-slate-500 dark:text-slate-400">
                       {stat.missedDays}
                     </td>
 
                     {/* Completion % */}
-                    <td className="py-3 px-3 text-center font-mono tabular-nums font-black text-slate-900 dark:text-white">
+                    <td className="py-3 px-3 text-center font-num font-extrabold text-slate-900 dark:text-white">
                       {stat.completionRate.toFixed(1)}%
                     </td>
 
                     {/* Current Streak */}
-                    <td className="py-3 px-3 text-center font-mono tabular-nums">
+                    <td className="py-3 px-3 text-center font-num">
                       {stat.currentStreak > 0 ? (
                         <span className="inline-flex items-center gap-1 font-bold text-slate-900 dark:text-white px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/15">
                           <Flame className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
@@ -474,7 +474,7 @@ export const HabitAnalysis: React.FC<HabitAnalysisProps> = ({ habitStats }) => {
                     </td>
 
                     {/* Longest Streak */}
-                    <td className="py-3 px-3 text-center font-mono tabular-nums text-slate-600 dark:text-slate-300">
+                    <td className="py-3 px-3 text-center font-num font-semibold text-slate-600 dark:text-slate-300">
                       {stat.longestStreak > 0 ? `${stat.longestStreak}d` : '—'}
                     </td>
 
@@ -487,7 +487,7 @@ export const HabitAnalysis: React.FC<HabitAnalysisProps> = ({ habitStats }) => {
                             style={{ width: `${Math.min(100, Math.max(0, stat.completionRate))}%` }}
                           />
                         </div>
-                        <span className="text-[11px] font-mono tabular-nums font-bold text-slate-700 dark:text-slate-300 shrink-0 w-9 text-right">
+                        <span className="text-[11px] font-num font-bold text-slate-700 dark:text-slate-300 shrink-0 w-9 text-right">
                           {Math.round(stat.completionRate)}%
                         </span>
                       </div>

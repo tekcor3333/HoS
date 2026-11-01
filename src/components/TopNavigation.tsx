@@ -42,7 +42,6 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
     { id: 'grid', label: 'Grid' },
     { id: 'weekly', label: 'Weekly' },
     { id: 'analysis', label: 'Analysis' },
-    { id: 'goals', label: 'Goals' },
     { id: 'history', label: 'History' },
   ];
 

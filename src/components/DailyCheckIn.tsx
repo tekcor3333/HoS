@@ -80,7 +80,7 @@ export const DailyCheckIn: React.FC<DailyCheckInProps> = ({
     <section id="daily-checkin" className="mb-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+          <h2 className="text-lg font-heading font-normal text-slate-900 dark:text-white tracking-tight">
             Daily Check-In
           </h2>
           {isSelectedToday && (
@@ -143,7 +143,7 @@ export const DailyCheckIn: React.FC<DailyCheckInProps> = ({
                     {dInfo.shortName}
                   </span>
                   <span
-                    className={`text-sm font-black font-mono mt-0.5 ${
+                    className={`text-sm font-extrabold font-num mt-0.5 ${
                       isCurrent ? 'text-white dark:text-white' : 'text-slate-900 dark:text-white'
                     }`}
                   >
@@ -165,10 +165,10 @@ export const DailyCheckIn: React.FC<DailyCheckInProps> = ({
 
           <div className="text-right shrink-0 hidden sm:block">
             <span className="text-xs font-bold text-slate-900 dark:text-white">
-              {fullName}, Day {selectedDay}
+              {fullName}, Day <span className="font-num font-extrabold">{selectedDay}</span>
             </span>
             <div className="text-[11px] text-slate-600 dark:text-slate-300">
-              {completedCount} of {totalCount} habits completed
+              <span className="font-num font-bold">{completedCount}</span> of <span className="font-num font-bold">{totalCount}</span> habits completed
             </div>
           </div>
         </div>
@@ -203,11 +203,11 @@ export const DailyCheckIn: React.FC<DailyCheckInProps> = ({
               </svg>
 
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+                <span className="text-3xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight">
                   {percentage}%
                 </span>
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 font-mono">
-                  {completedCount}/{totalCount} Done
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 font-num">
+                  {completedCount} of {totalCount} Done
                 </span>
               </div>
             </div>

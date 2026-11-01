@@ -1,0 +1,636 @@
+import React, { useState, useMemo } from 'react';
+import { Habit, DailyStat } from '../types';
+import { getDayOfWeek, getWeekGroups } from '../utils/dateUtils';
+import { Sparkles, TrendingUp, Flame, Award, Check } from 'lucide-react';
+
+interface HabitCurvyGraphProps {
+  habits: Habit[];
+  checks: Record<string, boolean>;
+  dailyStats: DailyStat[];
+  year: number;
+  month: number;
+  monthName: string;
+  daysInMonth: number;
+  todayDate: Date;
+  onSelectDay?: (day: number) => void;
+  onToggleCheck?: (habitId: string, day: number) => void;
+}
+
+interface CurvyPoint {
+  x: number;
+  y: number;
+  day: number;
+  dayName: string;
+  fullDayName: string;
+  total: number;
+  completed: number;
+  percent: number;
+  isToday: boolean;
+  completedHabits: Habit[];
+  pendingHabits: Habit[];
+}
+
+/**
+ * Computes a continuous smooth cubic Bézier spline (Catmull-Rom to Cubic Bézier)
+ * that produces organic, circular-curved waves without any sharp angles or straight line segments.
+ */
+function generateCurvySplinePath(points: CurvyPoint[], tension: number = 0.35): string {
+  if (points.length === 0) return '';
+  if (points.length === 1) return `M ${points[0].x.toFixed(2)},${points[0].y.toFixed(2)}`;
+
+  if (points.length === 2) {
+    const midX = (points[0].x + points[1].x) / 2;
+    return `M ${points[0].x.toFixed(2)},${points[0].y.toFixed(2)} Q ${midX.toFixed(2)},${points[0].y.toFixed(2)} ${midX.toFixed(2)},${((points[0].y + points[1].y) / 2).toFixed(2)} T ${points[1].x.toFixed(2)},${points[1].y.toFixed(2)}`;
+  }
+
+  let path = `M ${points[0].x.toFixed(2)},${points[0].y.toFixed(2)}`;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = i === 0 ? points[0] : points[i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = i + 2 < points.length ? points[i + 2] : p2;
+
+    const cp1x = p1.x + ((p2.x - p0.x) / 6) * (1 + tension);
+    const cp1y = p1.y + ((p2.y - p0.y) / 6) * (1 + tension);
+
+    const cp2x = p2.x - ((p3.x - p1.x) / 6) * (1 + tension);
+    const cp2y = p2.y - ((p3.y - p1.y) / 6) * (1 + tension);
+
+    path += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+  }
+
+  return path;
+}
+
+/**
+ * Closes the curvy spline into an area shape for the luminous gradient fill underneath.
+ */
+function generateCurvyAreaPath(points: CurvyPoint[], baselineY: number, tension: number = 0.35): string {
+  if (points.length === 0) return '';
+  const spline = generateCurvySplinePath(points, tension);
+  const first = points[0];
+  const last = points[points.length - 1];
+  return `${spline} L ${last.x.toFixed(2)},${baselineY.toFixed(2)} L ${first.x.toFixed(2)},${baselineY.toFixed(2)} Z`;
+}
+
+export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
+  habits,
+  checks,
+  dailyStats,
+  year,
+  month,
+  monthName,
+  daysInMonth,
+  todayDate,
+  onSelectDay,
+  onToggleCheck,
+}) => {
+  const [viewScope, setViewScope] = useState<'week' | 'month'>('month');
+  const [hoveredPoint, setHoveredPoint] = useState<CurvyPoint | null>(null);
+
+  const isCurrentMonth =
+    todayDate.getFullYear() === year && todayDate.getMonth() + 1 === month;
+  const todayDay = isCurrentMonth ? todayDate.getDate() : -1;
+
+  // Active week calculation
+  const weekGroups = useMemo(() => getWeekGroups(daysInMonth), [daysInMonth]);
+  const activeWeekGroup = useMemo(() => {
+    if (todayDay > 0) {
+      const match = weekGroups.find((g) => g.days.includes(todayDay));
+      if (match) return match;
+    }
+    return weekGroups[0] || { weekNumber: 1, label: 'Week 1', days: [1, 2, 3, 4, 5, 6, 7] };
+  }, [todayDay, weekGroups]);
+
+  // Target days according to scope
+  const targetDays = useMemo(() => {
+    if (viewScope === 'week') {
+      return activeWeekGroup.days;
+    }
+    return Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  }, [viewScope, activeWeekGroup, daysInMonth]);
+
+  // SVG dimensions
+  const svgWidth = 920;
+  const svgHeight = 210;
+  const padLeft = 40;
+  const padRight = 40;
+  const padTop = 26;
+  const padBottom = 34;
+
+  const usableWidth = svgWidth - padLeft - padRight;
+  const usableHeight = svgHeight - padTop - padBottom;
+  const baselineY = svgHeight - padBottom;
+
+  // Map days to curvy coordinate points
+  const points: CurvyPoint[] = useMemo(() => {
+    if (targetDays.length === 0) return [];
+
+    return targetDays.map((day, idx) => {
+      const stat = dailyStats.find((s) => s.day === day);
+      const { shortName: dayName, fullName: fullDayName } = getDayOfWeek(year, month, day);
+
+      const completedHabits: Habit[] = [];
+      const pendingHabits: Habit[] = [];
+
+      habits.forEach((h) => {
+        if (checks[`${h.id}_${day}`]) {
+          completedHabits.push(h);
+        } else {
+          pendingHabits.push(h);
+        }
+      });
+
+      const total = habits.length;
+      const completed = completedHabits.length;
+      const percent = total > 0 ? Math.round((completed / total) * 100) : (stat?.percentage ?? 0);
+
+      const x =
+        targetDays.length === 1
+          ? svgWidth / 2
+          : padLeft + (idx / (targetDays.length - 1)) * usableWidth;
+
+      const y = baselineY - (percent / 100) * usableHeight;
+
+      return {
+        x,
+        y,
+        day,
+        dayName,
+        fullDayName,
+        total,
+        completed,
+        percent,
+        isToday: day === todayDay,
+        completedHabits,
+        pendingHabits,
+      };
+    });
+  }, [targetDays, habits, checks, dailyStats, year, month, todayDay, usableWidth, usableHeight, baselineY, svgWidth]);
+
+  // Summary metrics for current scope
+  const summaryMetrics = useMemo(() => {
+    let totalChecksPossible = 0;
+    let totalCompleted = 0;
+    let daysWithFullCompletion = 0;
+    let maxHabitsDay: { day: number; count: number } = { day: 1, count: 0 };
+
+    points.forEach((pt) => {
+      totalChecksPossible += pt.total;
+      totalCompleted += pt.completed;
+      if (pt.total > 0 && pt.completed === pt.total) {
+        daysWithFullCompletion++;
+      }
+      if (pt.completed > maxHabitsDay.count) {
+        maxHabitsDay = { day: pt.day, count: pt.completed };
+      }
+    });
+
+    const completionRate =
+      totalChecksPossible > 0 ? Math.round((totalCompleted / totalChecksPossible) * 100) : 0;
+
+    return {
+      totalChecksPossible,
+      totalCompleted,
+      completionRate,
+      daysWithFullCompletion,
+      maxHabitsDay,
+    };
+  }, [points]);
+
+  // Ambient smooth wave running beneath the main curve
+  const ambientPoints: CurvyPoint[] = useMemo(() => {
+    if (points.length < 2) return [];
+    return points.map((pt, i) => {
+      const prev = points[Math.max(0, i - 1)];
+      const next = points[Math.min(points.length - 1, i + 1)];
+      const smoothedY = (prev.y + pt.y * 2 + next.y) / 4;
+      return {
+        ...pt,
+        y: Math.min(baselineY, smoothedY + 10),
+      };
+    });
+  }, [points, baselineY]);
+
+  // Generate paths
+  const mainSplinePath = useMemo(() => generateCurvySplinePath(points, 0.35), [points]);
+  const mainAreaPath = useMemo(() => generateCurvyAreaPath(points, baselineY, 0.35), [points, baselineY]);
+  const ambientSplinePath = useMemo(() => generateCurvySplinePath(ambientPoints, 0.45), [ambientPoints]);
+
+  // Circular Completion Ring Geometry
+  const ringRadius = 32;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const ringOffset = ringCircumference - (summaryMetrics.completionRate / 100) * ringCircumference;
+
+  // Curvy Circular Consistency Arc Geometry
+  const arcRadius = 32;
+  const arcCircumference = 2 * Math.PI * arcRadius;
+  const activePercentClamped = Math.min(100, summaryMetrics.completionRate);
+  const arcOffset = arcCircumference - (activePercentClamped / 100) * (arcCircumference * 0.75);
+
+  return (
+    <div className="p-4 sm:p-6 bg-white/40 dark:bg-white/5 border-t border-slate-200/80 dark:border-white/10 select-none relative overflow-hidden">
+      {/* Background Ambient Glow */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-amber-400/5 dark:bg-[#f6da7e]/5 rounded-full blur-3xl pointer-events-none" />
+
+      {/* 1. Header Bar with Scope Tabs & Title */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 relative z-10">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-slate-900/5 dark:bg-white/10 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-slate-900 dark:text-[#f6da7e] shrink-0 shadow-2xs">
+            <TrendingUp className="w-5 h-5 stroke-[2.3]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Habit Completion Wave & Circular Velocity
+              </h3>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:bg-[#f6da7e]/15 dark:text-[#f6da7e] border border-amber-500/20 dark:border-[#f6da7e]/30">
+                <Sparkles className="w-3 h-3" /> Curvy Rhythm
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Organic undulating curves mapping your daily habit consistency across {viewScope === 'week' ? activeWeekGroup.label : `${monthName} ${year}`}
+            </p>
+          </div>
+        </div>
+
+        {/* View Scope Capsule Switcher (Week Flow vs Month Horizon) */}
+        <div className="flex items-center gap-1.5 self-start md:self-auto p-1 rounded-2xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewScope('week')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+              viewScope === 'week'
+                ? 'bg-white dark:bg-white/20 text-slate-950 dark:text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
+            }`}
+          >
+            <span>This Week</span>
+            <span className="text-[10px] font-num font-bold px-1.5 py-0.2 rounded-md bg-slate-200/60 dark:bg-white/10">
+              {activeWeekGroup.label}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewScope('month')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+              viewScope === 'month'
+                ? 'bg-white dark:bg-white/20 text-slate-950 dark:text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
+            }`}
+          >
+            <span>Full Month</span>
+            <span className="text-[10px] font-num font-bold px-1.5 py-0.2 rounded-md bg-slate-200/60 dark:bg-white/10">
+              {daysInMonth}d
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Top Circular Stats Trio — Circular Completion Ring & Curvy Rhythm Gauges */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-5 relative z-10">
+        {/* Circular Gauge 1: Main Circular Completion Ring */}
+        <div className="p-3.5 rounded-2xl bg-white/60 dark:bg-white/5 border border-white/70 dark:border-white/10 flex items-center justify-between gap-3 shadow-2xs hover:bg-white/80 dark:hover:bg-white/[0.08] transition-colors">
+          <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
+            <svg viewBox="0 0 76 76" className="w-16 h-16 -rotate-90 transform overflow-visible">
+              <circle
+                cx="38"
+                cy="38"
+                r={ringRadius}
+                stroke="currentColor"
+                strokeWidth="5"
+                fill="transparent"
+                className="text-slate-200/80 dark:text-white/10"
+              />
+              <circle
+                cx="38"
+                cy="38"
+                r={ringRadius}
+                stroke="currentColor"
+                strokeWidth="5"
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={ringOffset}
+                strokeLinecap="round"
+                fill="transparent"
+                className="text-slate-900 dark:text-[#f6da7e] transition-all duration-700 ease-out"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span className="text-xs font-extrabold text-slate-950 dark:text-white font-num leading-none">
+                {summaryMetrics.completionRate}%
+              </span>
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block tracking-wider">
+              Habit Velocity
+            </span>
+            <span className="text-sm font-extrabold text-slate-900 dark:text-white block mt-0.5 truncate font-num">
+              {summaryMetrics.totalCompleted} of {summaryMetrics.totalChecksPossible} Done
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-num font-medium mt-0.5 block truncate">
+              {summaryMetrics.totalChecksPossible - summaryMetrics.totalCompleted} checks remaining
+            </span>
+          </div>
+        </div>
+
+        {/* Circular Gauge 2: Circular Consistency Arc */}
+        <div className="p-3.5 rounded-2xl bg-white/60 dark:bg-white/5 border border-white/70 dark:border-white/10 flex items-center justify-between gap-3 shadow-2xs hover:bg-white/80 dark:hover:bg-white/[0.08] transition-colors">
+          <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
+            <svg viewBox="0 0 76 76" className="w-16 h-16 -rotate-135 transform overflow-visible">
+              <circle
+                cx="38"
+                cy="38"
+                r={arcRadius}
+                stroke="currentColor"
+                strokeWidth="5"
+                strokeDasharray={arcCircumference}
+                strokeDashoffset={arcCircumference * 0.25}
+                strokeLinecap="round"
+                fill="transparent"
+                className="text-slate-200/80 dark:text-white/10"
+              />
+              <circle
+                cx="38"
+                cy="38"
+                r={arcRadius}
+                stroke="currentColor"
+                strokeWidth="5"
+                strokeDasharray={arcCircumference}
+                strokeDashoffset={arcOffset}
+                strokeLinecap="round"
+                fill="transparent"
+                className="text-amber-500 dark:text-[#f6da7e] transition-all duration-700 ease-out"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <Flame className="w-4 h-4 text-amber-500 dark:text-[#f6da7e]" />
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block tracking-wider">
+              Peak Momentum
+            </span>
+            <span className="text-sm font-extrabold text-slate-900 dark:text-white block mt-0.5 truncate">
+              Day <span className="font-num">{summaryMetrics.maxHabitsDay.day}</span> Leader
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-num font-medium mt-0.5 block truncate">
+              {summaryMetrics.maxHabitsDay.count} habits completed in 1 day
+            </span>
+          </div>
+        </div>
+
+        {/* Circular Gauge 3: Days with 100% Habit Completion Badge */}
+        <div className="p-3.5 rounded-2xl bg-white/60 dark:bg-white/5 border border-white/70 dark:border-white/10 flex items-center justify-between gap-3 shadow-2xs hover:bg-white/80 dark:hover:bg-white/[0.08] transition-colors">
+          <div className="w-14 h-14 rounded-full bg-emerald-500/10 dark:bg-emerald-400/15 border-2 border-emerald-500/30 dark:border-emerald-400/40 flex items-center justify-center text-emerald-600 dark:text-emerald-300 shrink-0 shadow-2xs">
+            <Award className="w-6 h-6 stroke-[2.2]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block tracking-wider">
+              Flawless Days
+            </span>
+            <span className="text-sm font-extrabold text-slate-900 dark:text-white block mt-0.5 truncate">
+              <span className="font-num">{summaryMetrics.daysWithFullCompletion}</span> Days All-Done
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-num font-medium mt-0.5 block truncate">
+              100% habits cleared
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. The Curvy Circular SVG Wave Canvas */}
+      <div className="w-full bg-white/80 dark:bg-slate-950/70 rounded-2xl p-3 sm:p-4 border border-white dark:border-white/10 shadow-inner relative overflow-hidden">
+        {/* Horizontal reference lines */}
+        <div className="absolute inset-x-4 inset-y-4 flex flex-col justify-between pointer-events-none opacity-20 dark:opacity-25 font-num font-bold">
+          <div className="w-full border-b border-dashed border-slate-600 dark:border-slate-300 flex justify-end pr-2 text-[9px]">100%</div>
+          <div className="w-full border-b border-dashed border-slate-600 dark:border-slate-300 flex justify-end pr-2 text-[9px]">75%</div>
+          <div className="w-full border-b border-dashed border-slate-600 dark:border-slate-300 flex justify-end pr-2 text-[9px]">50%</div>
+          <div className="w-full border-b border-dashed border-slate-600 dark:border-slate-300 flex justify-end pr-2 text-[9px]">25%</div>
+          <div className="w-full border-b border-slate-600 dark:border-slate-300 flex justify-end pr-2 text-[9px]">0%</div>
+        </div>
+
+        <svg
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          className="w-full h-44 sm:h-52 overflow-visible relative z-10 touch-pan-x"
+        >
+          <defs>
+            {/* Curvy Fluid Gradient Area Fill */}
+            <linearGradient id="habitCurvyGlowFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="currentColor" stopOpacity="0.32" />
+              <stop offset="65%" stopColor="currentColor" stopOpacity="0.08" />
+              <stop offset="100%" stopColor="currentColor" stopOpacity="0.0" />
+            </linearGradient>
+
+            {/* Glowing Drop Filter for the main curvy line */}
+            <filter id="habitCurvyGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          {/* 1. Underlying Ambient Wave (Soft Fluid Motion Rhythm) */}
+          {ambientSplinePath && (
+            <path
+              d={ambientSplinePath}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+              className="text-slate-400/40 dark:text-[#f6da7e]/30 transition-all duration-500"
+            />
+          )}
+
+          {/* 2. Main Curvy Spline Gradient Area */}
+          {mainAreaPath && (
+            <path
+              d={mainAreaPath}
+              fill="url(#habitCurvyGlowFill)"
+              className="text-slate-900 dark:text-[#f6da7e] transition-all duration-500 ease-out"
+            />
+          )}
+
+          {/* 3. Main Organic Curvy Spline Line */}
+          {mainSplinePath && (
+            <path
+              d={mainSplinePath}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              filter="url(#habitCurvyGlow)"
+              className="text-slate-950 dark:text-[#f6da7e] transition-all duration-500 ease-out"
+            />
+          )}
+
+          {/* 4. Circular Interactive Nodes along the curve */}
+          {points.map((pt) => {
+            const isHovered = hoveredPoint?.day === pt.day;
+            const isFlawless = pt.total > 0 && pt.completed === pt.total;
+
+            return (
+              <g
+                key={pt.day}
+                className="cursor-pointer transition-transform duration-200"
+                onMouseEnter={() => setHoveredPoint(pt)}
+                onMouseLeave={() => setHoveredPoint(null)}
+                onClick={() => onSelectDay && onSelectDay(pt.day)}
+              >
+                {/* Outer Glow Halo for Today or Hover */}
+                {(pt.isToday || isHovered) && (
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={pt.isToday ? 15 : 12}
+                    fill="currentColor"
+                    fillOpacity="0.18"
+                    className="text-slate-900 dark:text-[#f6da7e] transition-all animate-pulse"
+                  />
+                )}
+
+                {/* Animated Pulsing Ping for Today */}
+                {pt.isToday && (
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={9}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="text-slate-900 dark:text-[#f6da7e] animate-ping opacity-60"
+                  />
+                )}
+
+                {/* Outer Circular Ring Bead */}
+                <circle
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={isHovered ? 6.5 : pt.isToday ? 5.5 : 4.5}
+                  stroke="currentColor"
+                  strokeWidth={isHovered ? 2.5 : 2}
+                  className={`transition-all duration-200 ${
+                    isFlawless
+                      ? 'fill-emerald-500 stroke-white dark:stroke-slate-950'
+                      : pt.isToday
+                      ? 'fill-slate-950 dark:fill-[#f6da7e] stroke-white dark:stroke-slate-950'
+                      : pt.percent > 0
+                      ? 'fill-slate-800 dark:fill-[#ecd06c] stroke-white dark:stroke-slate-900'
+                      : 'fill-slate-300 dark:fill-white/30 stroke-white dark:stroke-slate-900'
+                  }`}
+                />
+
+                {/* Inner Pinpoint for high precision */}
+                {isHovered && (
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={2}
+                    fill="white"
+                    className="pointer-events-none"
+                  />
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* 4. Interactive Floating Tooltip on Node Hover */}
+        {hoveredPoint && (
+          <div
+            className="absolute z-30 pointer-events-none transform -translate-x-1/2 -translate-y-full transition-all duration-150"
+            style={{
+              left: `${(hoveredPoint.x / svgWidth) * 100}%`,
+              top: `${Math.max(12, (hoveredPoint.y / svgHeight) * 100 - 10)}%`,
+            }}
+          >
+            <div className="bg-slate-900 text-white dark:bg-white dark:text-slate-950 p-2.5 rounded-2xl shadow-2xl border border-white/20 dark:border-black/20 text-xs min-w-[160px] backdrop-blur-md">
+              <div className="flex items-center justify-between gap-2 border-b border-white/15 dark:border-black/15 pb-1.5 mb-1.5">
+                <span className="font-extrabold uppercase tracking-wider text-[10px]">
+                  {hoveredPoint.dayName} {hoveredPoint.day} {monthName.slice(0, 3)}
+                </span>
+                <span className="font-num font-extrabold text-amber-300 dark:text-amber-700">
+                  {hoveredPoint.percent}%
+                </span>
+              </div>
+              <div className="text-[11px] font-medium flex items-center justify-between">
+                <span>Completed:</span>
+                <strong className="font-num font-bold">{hoveredPoint.completed} of {hoveredPoint.total} habits</strong>
+              </div>
+
+              {/* Habits preview */}
+              <div className="mt-1.5 pt-1.5 border-t border-white/10 dark:border-black/10 text-[10px] space-y-1 opacity-90 max-w-[200px]">
+                {hoveredPoint.completedHabits.slice(0, 3).map((h) => (
+                  <div key={h.id} className="truncate flex items-center gap-1.5 text-emerald-400 dark:text-emerald-600">
+                    <Check className="w-3 h-3 stroke-[3] shrink-0" />
+                    <span className="truncate">{h.emoji} {h.name}</span>
+                  </div>
+                ))}
+                {hoveredPoint.pendingHabits.slice(0, 2).map((h) => (
+                  <div key={h.id} className="truncate flex items-center gap-1.5 text-slate-400">
+                    <span className="w-3 text-center shrink-0">○</span>
+                    <span className="truncate">{h.emoji} {h.name}</span>
+                  </div>
+                ))}
+                {hoveredPoint.total > 5 && (
+                  <div className="text-[9px] opacity-70 italic font-num">
+                    +{hoveredPoint.total - 5} more habits
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 5. Bottom Circular Day Pills Strip */}
+        <div className="flex justify-between items-center px-1 pt-2 border-t border-slate-200/60 dark:border-white/10 text-[10px] font-num font-bold text-slate-500 dark:text-slate-400">
+          {points.map((pt, idx) => {
+            const showLabel =
+              viewScope === 'week' ||
+              idx === 0 ||
+              idx === points.length - 1 ||
+              pt.day % 5 === 0 ||
+              pt.isToday;
+
+            return (
+              <button
+                key={pt.day}
+                type="button"
+                onClick={() => onSelectDay && onSelectDay(pt.day)}
+                className={`flex flex-col items-center gap-0.5 transition-colors cursor-pointer ${
+                  pt.isToday
+                    ? 'text-slate-950 dark:text-[#f6da7e] font-black'
+                    : hoveredPoint?.day === pt.day
+                    ? 'text-slate-900 dark:text-white font-bold'
+                    : 'hover:text-slate-900 dark:hover:text-white'
+                }`}
+                style={{ width: `${100 / points.length}%` }}
+              >
+                {showLabel ? (
+                  <>
+                    <span className="text-[9px] uppercase leading-tight font-sans">
+                      {pt.dayName}
+                    </span>
+                    <span
+                      className={`text-[10px] px-1 py-0.2 rounded-md ${
+                        pt.isToday
+                          ? 'bg-slate-900 text-white dark:bg-[#f6da7e] dark:text-slate-950 font-black'
+                          : ''
+                      }`}
+                    >
+                      {pt.day}
+                    </span>
+                  </>
+                ) : (
+                  <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-white/20 my-1.5" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MonthOverviewStats } from '../types';
 import { MONTH_NAMES } from '../utils/dateUtils';
-import { ChevronLeft, ChevronRight, Check, Copy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Copy, RotateCcw } from 'lucide-react';
+import { ResetTicksModal, ResetScope } from './ResetTicksModal';
 
 const SHORT_MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -12,6 +13,11 @@ interface MonthlyOverviewProps {
   onMonthChange: (month: number) => void;
   onYearChange: (year: number) => void;
   onDuplicateMonth: () => void;
+  habitChecksCount?: number;
+  completedTasksCount?: number;
+  onResetMonthChecks?: () => void;
+  onResetMonthTasks?: () => void;
+  onResetMonthAll?: () => void;
 }
 
 export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
@@ -21,8 +27,14 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
   onMonthChange,
   onYearChange,
   onDuplicateMonth,
+  habitChecksCount = 0,
+  completedTasksCount = 0,
+  onResetMonthChecks,
+  onResetMonthTasks,
+  onResetMonthAll,
 }) => {
   const currentMonthName = MONTH_NAMES[month - 1];
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const monthButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -182,7 +194,7 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          <span className="px-1.5 sm:px-2.5 text-xs font-bold text-slate-900 dark:text-white font-mono">
+          <span className="px-2 sm:px-3 text-xs font-bold text-slate-900 dark:text-white font-num">
             {year}
           </span>
           <button
@@ -212,7 +224,19 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {onResetMonthChecks && (
+            <button
+              type="button"
+              onClick={() => setIsResetModalOpen(true)}
+              title={`Reset ticks for ${currentMonthName} ${year}`}
+              className="tourera-pill-btn-white px-3 sm:px-4 py-2 font-bold text-xs text-slate-800 dark:text-slate-100 rounded-full transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:text-amber-600 dark:hover:text-amber-400"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Reset Ticks</span>
+            </button>
+          )}
+
           <button
             onClick={onDuplicateMonth}
             className="tourera-pill-btn-white px-3.5 sm:px-4 py-2 font-bold text-xs text-slate-900 rounded-full transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
@@ -311,33 +335,39 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
           {/* Left: Month title & Counts */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <span
+                className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-slate-900 dark:text-white"
+                style={{
+                  fontFamily: '"Bodoni Moda", "Playfair Display", "Cinzel", "Newsreader", "DM Serif Display", Georgia, serif',
+                  letterSpacing: '-0.02em',
+                }}
+              >
                 {currentMonthName}
               </span>
-              <span className="px-3 py-0.5 text-xs font-semibold text-slate-700 dark:text-white/90 bg-slate-900/5 dark:bg-white/10 backdrop-blur-md rounded-full border border-slate-900/10 dark:border-white/20">
+              <span className="px-3 py-1 text-xs font-bold text-slate-700 dark:text-white/90 bg-slate-900/5 dark:bg-white/10 backdrop-blur-md rounded-full border border-slate-900/10 dark:border-white/20 font-num">
                 {stats.totalDaysInMonth} Days
               </span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-6 text-xs">
-              <div className="bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-slate-900/10 dark:border-white/10">
-                <div className="text-slate-600 dark:text-slate-300 font-medium text-[11px] sm:text-xs">Number of habits</div>
-                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-0.5">
+              <div className="bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-slate-900/10 dark:border-white/10">
+                <div className="text-slate-600 dark:text-slate-300 font-semibold text-[11px] sm:text-xs tracking-tight">Number of habits</div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-num mt-1">
                   {stats.totalHabits}
                 </div>
               </div>
-              <div className="bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-slate-900/10 dark:border-white/10">
-                <div className="text-slate-600 dark:text-slate-300 font-medium text-[11px] sm:text-xs">Completed check-ins</div>
-                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-0.5 flex items-baseline gap-1">
+              <div className="bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-slate-900/10 dark:border-white/10">
+                <div className="text-slate-600 dark:text-slate-300 font-semibold text-[11px] sm:text-xs tracking-tight">Completed check-ins</div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-num mt-1 flex items-baseline gap-1.5">
                   <span>{stats.totalCompletedCheckins}</span>
-                  <span className="text-xs font-normal text-slate-500 dark:text-slate-300">
-                    / {stats.totalPossibleCheckins}
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    of {stats.totalPossibleCheckins}
                   </span>
                 </div>
               </div>
-              <div className="col-span-2 sm:col-span-1 bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-slate-900/10 dark:border-white/10">
-                <div className="text-slate-600 dark:text-slate-300 font-medium text-[11px] sm:text-xs">Remaining to 100%</div>
-                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-0.5">
+              <div className="col-span-2 sm:col-span-1 bg-slate-900/5 dark:bg-white/5 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-slate-900/10 dark:border-white/10">
+                <div className="text-slate-600 dark:text-slate-300 font-semibold text-[11px] sm:text-xs tracking-tight">Remaining to 100%</div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-num mt-1">
                   {Math.max(0, stats.totalPossibleCheckins - stats.totalCompletedCheckins)}
                 </div>
               </div>
@@ -350,7 +380,7 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 Progress in %
               </span>
-              <span className="text-3xl font-black text-slate-900 dark:text-white font-mono tabular-nums tracking-tight">
+              <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight">
                 {stats.overallPercentage.toFixed(2)}%
               </span>
             </div>
@@ -363,7 +393,7 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
               />
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-200 mt-3 font-mono tabular-nums">
+            <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-200 mt-3 font-num font-semibold">
               <span>Target: {stats.monthlyGoal.targetPercentage}%</span>
               <span>
                 {stats.overallPercentage >= stats.monthlyGoal.targetPercentage ? (
@@ -371,7 +401,7 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
                     <Check className="w-3.5 h-3.5 text-slate-900 dark:text-[#f6da7e]" /> Target Reached
                   </span>
                 ) : (
-                  <span className="text-slate-600 dark:text-slate-200">
+                  <span className="text-slate-600 dark:text-slate-200 font-num">
                     {(stats.monthlyGoal.targetPercentage - stats.overallPercentage).toFixed(1)}% to goal
                   </span>
                 )}
@@ -380,6 +410,22 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Reset Ticks Confirmation Modal */}
+      <ResetTicksModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        monthName={currentMonthName}
+        year={year}
+        habitChecksCount={habitChecksCount}
+        completedTasksCount={completedTasksCount}
+        initialScope="habits-only"
+        onConfirmReset={(scope: ResetScope) => {
+          if (scope === 'habits-only') onResetMonthChecks?.();
+          else if (scope === 'tasks-only') onResetMonthTasks?.();
+          else if (scope === 'all') onResetMonthAll?.();
+        }}
+      />
     </section>
   );
 };

@@ -177,7 +177,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               max={daysInMonth}
               value={targetDays}
               onChange={(e) => setTargetDays(Number(e.target.value) || daysInMonth)}
-              className="w-full px-4 py-2.5 text-xs rounded-2xl border border-slate-200 dark:border-white/20 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:border-slate-900 dark:focus:border-white shadow-2xs font-mono font-bold"
+              className="w-full px-4 py-2.5 text-xs rounded-2xl border border-slate-200 dark:border-white/20 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:border-slate-900 dark:focus:border-white shadow-2xs font-num font-bold"
             />
             <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">
               Default is all {daysInMonth} days of the month.

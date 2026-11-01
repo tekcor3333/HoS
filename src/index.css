@@ -4,9 +4,11 @@
 
 @layer base {
   :root {
-    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
-    --font-serif: "Bodoni Moda", "Playfair Display", "Cinzel", "Newsreader", "DM Serif Display", Georgia, serif;
-    --font-mono: "SF Mono", Monaco, Menlo, Consolas, monospace;
+    --font-sans: "Plus Jakarta Sans", "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-serif: "Bodoni Moda", "Playfair Display", "Cinzel", "DM Serif Display", Georgia, serif;
+    --font-mono: "Outfit", "Plus Jakarta Sans", -apple-system, sans-serif;
+    --font-heading: "Bodoni Moda", "Playfair Display", "DM Serif Display", Georgia, serif;
+    --font-num: "Outfit", "Plus Jakarta Sans", -apple-system, sans-serif;
   }
 
   html, body {
@@ -16,6 +18,7 @@
 
   body {
     font-family: var(--font-sans);
+    font-feature-settings: "zero" 0;
     background-color: #f1f5f9;
     color: #0f172a;
     -webkit-font-smoothing: antialiased;
@@ -30,6 +33,21 @@
     background-color: #0b0c10;
     color: #f7f6f2;
   }
+}
+
+/* Premium High-Fashion Editorial Typography (Matching user's favorite "My Habit Tracker" & "HoS") */
+.font-serif-luxury,
+.font-heading {
+  font-family: "Bodoni Moda", "Playfair Display", "DM Serif Display", Georgia, serif !important;
+  letter-spacing: -0.02em;
+}
+
+/* Ultra-Clean, High-Legibility Modern Numerals (No slashes, no crossed-zeros, crisp from across the room) */
+.font-num {
+  font-family: "Outfit", "Plus Jakarta Sans", -apple-system, sans-serif !important;
+  font-feature-settings: "zero" 0, "tnum" 1;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.015em;
 }
 
 @media (max-width: 768px) {
@@ -281,23 +299,19 @@ button, a, input, select, textarea {
 
 /* Table Glass Sheet */
 .tourera-table-header {
-  background: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  background: rgba(255, 255, 255, 0.96) !important;
 }
 
 .dark .tourera-table-header {
-  background: rgba(14, 16, 22, 0.9) !important;
+  background: rgba(14, 16, 22, 0.97) !important;
 }
 
 .tourera-table-sticky-col {
-  background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(255, 255, 255, 0.96) !important;
 }
 
 .dark .tourera-table-sticky-col {
-  background: rgba(16, 19, 26, 0.92) !important;
+  background: rgba(16, 19, 26, 0.97) !important;
 }
 
 /* Minimalist Checkbox — Radiant Warm Amber Gold in Dark Mode */
@@ -568,36 +582,42 @@ html::-webkit-scrollbar {
   animation: macTabPulse 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
+.habitos-app-view-container {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+@keyframes habitosAppViewEnter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes habitosAppViewExit {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
 .habitos-view-entering {
-  animation: habitosAppViewEnter 380ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: habitosAppViewEnter 440ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
 }
 
 .habitos-view-exiting {
-  animation: habitosAppViewExit 140ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  animation: habitosAppViewExit 160ms cubic-bezier(0.4, 0, 1, 1) forwards;
   pointer-events: none;
-}
-
-@media (max-width: 640px) {
-  @keyframes habitosAppViewEnterMobile {
-    0% {
-      opacity: 0;
-      transform: translateY(24px) scale(0.97);
-      filter: blur(6px);
-    }
-    60% {
-      opacity: 0.9;
-      filter: blur(1.5px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-      filter: blur(0px);
-    }
-  }
-
-  .habitos-view-entering {
-    animation: habitosAppViewEnterMobile 360ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -605,7 +625,6 @@ html::-webkit-scrollbar {
     animation: none;
     opacity: 1;
     transform: none;
-    filter: none;
   }
   .habitos-view-exiting {
     animation: none;
@@ -614,26 +633,21 @@ html::-webkit-scrollbar {
 }
 
 /* ==========================================================================
-   Task Modal Spring Expand & Morph Transitions (Matching Reference Video)
+   Task Modal Spring Expand & Morph Transitions (GPU-Accelerated 120 FPS)
    ========================================================================== */
 
 @keyframes taskCardBloomIn {
   0% {
     opacity: 0;
-    transform: scale(0.65) translateY(20px);
-    filter: blur(8px);
+    transform: scale(0.92) translateY(12px);
   }
-  50% {
+  70% {
     opacity: 1;
-    filter: blur(0px);
-  }
-  80% {
-    transform: scale(1.015) translateY(-2px);
+    transform: scale(1.008) translateY(-1px);
   }
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
-    filter: blur(0px);
   }
 }
 
@@ -641,45 +655,35 @@ html::-webkit-scrollbar {
   0% {
     opacity: 1;
     transform: scale(1) translateY(0);
-    filter: blur(0px);
   }
   100% {
     opacity: 0;
-    transform: scale(0.75) translateY(16px);
-    filter: blur(6px);
+    transform: scale(0.95) translateY(8px);
   }
 }
 
 @keyframes taskBackdropFadeIn {
   0% {
     opacity: 0;
-    backdrop-filter: blur(0px);
-    -webkit-backdrop-filter: blur(0px);
   }
   100% {
     opacity: 1;
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
   }
 }
 
 @keyframes taskBackdropFadeOut {
   0% {
     opacity: 1;
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
   }
   100% {
     opacity: 0;
-    backdrop-filter: blur(0px);
-    -webkit-backdrop-filter: blur(0px);
   }
 }
 
 @keyframes taskContentCascade {
   0% {
     opacity: 0;
-    transform: translateY(-12px);
+    transform: translateY(-8px);
   }
   100% {
     opacity: 1;
@@ -688,32 +692,36 @@ html::-webkit-scrollbar {
 }
 
 .task-modal-expand-in {
-  animation: taskCardBloomIn 440ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: transform, opacity, filter;
+  animation: taskCardBloomIn 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 .task-modal-expand-out {
-  animation: taskCardBloomOut 240ms cubic-bezier(0.3, 0, 0.8, 0.15) forwards;
-  will-change: transform, opacity, filter;
+  animation: taskCardBloomOut 220ms cubic-bezier(0.3, 0, 0.8, 0.15) forwards;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 .task-backdrop-enter {
-  animation: taskBackdropFadeIn 360ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: taskBackdropFadeIn 320ms ease-out forwards;
+  will-change: opacity;
 }
 
 .task-backdrop-exit {
-  animation: taskBackdropFadeOut 240ms ease forwards;
+  animation: taskBackdropFadeOut 200ms ease-in forwards;
+  will-change: opacity;
 }
 
 .task-cascade-delay-1 {
-  animation: taskContentCascade 380ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
+  animation: taskContentCascade 260ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
 }
 
 .task-cascade-delay-2 {
-  animation: taskContentCascade 400ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both;
+  animation: taskContentCascade 280ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
 }
 
 .task-cascade-delay-3 {
-  animation: taskContentCascade 420ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
+  animation: taskContentCascade 300ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
 }
 

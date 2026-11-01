@@ -7,7 +7,6 @@ import {
   Grid3X3,
   CalendarDays,
   BarChart3,
-  Target,
   History,
 } from 'lucide-react';
 
@@ -36,7 +35,7 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
     },
     {
       id: 'check-in',
-      label: 'Check-In',
+      label: 'Check-in',
       icon: <CheckCircle2 className="w-4 h-4 shrink-0" />,
     },
     {
@@ -58,11 +57,6 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
       id: 'analysis',
       label: 'Analysis',
       icon: <BarChart3 className="w-4 h-4 shrink-0" />,
-    },
-    {
-      id: 'goals',
-      label: 'Goals',
-      icon: <Target className="w-4 h-4 shrink-0" />,
     },
     {
       id: 'history',

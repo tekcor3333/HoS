@@ -77,7 +77,6 @@ export type AppView =
   | 'grid'
   | 'weekly'
   | 'analysis'
-  | 'goals'
   | 'history';
 
 export interface TabOriginRect {
@@ -97,4 +96,4 @@ export interface DailyTodoTask {
   createdAt: string;
 }
 
-export type ViewTab = 'all' | 'grid' | 'dashboard' | 'analysis' | 'daily' | 'weekly' | 'goals';
+export type ViewTab = 'all' | 'grid' | 'dashboard' | 'analysis' | 'daily' | 'weekly';

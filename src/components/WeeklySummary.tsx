@@ -9,10 +9,10 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ weeklyStats }) => 
   return (
     <section id="weekly-summary" className="mb-8">
       <div className="flex items-center justify-between mb-3.5">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+        <h2 className="text-lg font-heading font-normal text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
           <span>Weekly Performance</span>
         </h2>
-        <span className="text-xs text-slate-600 dark:text-slate-300 font-mono tabular-nums px-3 py-1 rounded-full bg-white/70 dark:bg-white/10 border border-white/80 dark:border-white/15 shadow-2xs">
+        <span className="text-xs text-slate-600 dark:text-slate-300 font-num font-semibold px-3 py-1 rounded-full bg-white/70 dark:bg-white/10 border border-white/80 dark:border-white/15 shadow-2xs">
           Aggregated by week
         </span>
       </div>
@@ -33,17 +33,17 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ weeklyStats }) => 
                     <span className="w-2 h-2 rounded-full bg-slate-900 dark:bg-white" />
                     {week.weekLabel}
                   </span>
-                  <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 bg-white/80 dark:bg-white/10 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-white/15">
+                  <span className="text-[11px] font-num font-bold text-slate-700 dark:text-slate-300 bg-white/80 dark:bg-white/10 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-white/15">
                     d{week.days[0]}–{week.days[week.days.length - 1]}
                   </span>
                 </div>
 
                 <div className="flex items-baseline justify-between mt-3 mb-1">
-                  <span className="text-3xl font-black text-slate-900 dark:text-white font-mono tabular-nums tracking-tight">
+                  <span className="text-3xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight">
                     {week.percentage}%
                   </span>
-                  <span className="text-xs font-mono tabular-nums font-bold text-slate-600 dark:text-slate-300">
-                    {week.completedCount} / {week.totalPossible}
+                  <span className="text-xs font-num font-bold text-slate-600 dark:text-slate-300">
+                    {week.completedCount} of {week.totalPossible}
                   </span>
                 </div>
 
@@ -60,7 +60,7 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ weeklyStats }) => 
               <div className="pt-3 border-t border-slate-200/60 dark:border-white/10 flex items-center justify-between text-[11px]">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Status</span>
                 <span
-                  className={`font-bold font-mono px-2.5 py-0.5 rounded-full text-[11px] ${
+                  className={`font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
                     week.percentage >= 80
                       ? 'text-white dark:text-slate-950 bg-slate-900 dark:bg-white'
                       : week.percentage >= 60

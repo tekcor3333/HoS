@@ -696,7 +696,7 @@ export const CelestialThemeToggle: React.FC<CelestialThemeToggleProps> = ({
           <button
             type="button"
             onClick={toggleMoonVariant}
-            className="text-[11px] font-mono px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white/90 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white/90 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <span>Night Mode Phase:</span>
             <strong className="text-amber-400">

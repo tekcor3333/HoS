@@ -73,7 +73,6 @@ export const LiquidGlassScrollRail: React.FC<LiquidGlassScrollRailProps> = ({
       { id: 'monthly-grid', name: 'Habit Grid' },
       { id: 'weekly-summary', name: 'Weekly' },
       { id: 'habit-analysis', name: 'Analysis' },
-      { id: 'goals', name: 'Goals' },
       { id: 'history', name: 'History' },
     ];
 

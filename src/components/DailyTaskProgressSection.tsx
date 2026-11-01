@@ -21,9 +21,15 @@ import {
   Copy,
   X,
   Minimize2,
+  RotateCcw,
+  ChevronUp,
+  ChevronDown,
+  ArrowUpDown,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import confetti from 'canvas-confetti';
+import { TaskCurvyGraph } from './TaskCurvyGraph';
+import { ResetTicksModal, ResetScope } from './ResetTicksModal';
 
 interface DailyTaskProgressSectionProps {
   checks?: Record<string, boolean>;
@@ -39,6 +45,11 @@ interface DailyTaskProgressSectionProps {
   onToggleCheck?: (habitId: string, day: number) => void;
   dailyTodos?: Record<string, DailyTodoTask[]>;
   onDailyTodosChange?: (todos: Record<string, DailyTodoTask[]>) => void;
+  completedTasksCount?: number;
+  habitChecksCount?: number;
+  onResetMonthTasks?: () => void;
+  onResetMonthChecks?: () => void;
+  onResetMonthAll?: () => void;
 }
 
 export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> = ({
@@ -50,6 +61,11 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
   onAddHabit,
   dailyTodos: externalDailyTodos,
   onDailyTodosChange,
+  completedTasksCount = 0,
+  habitChecksCount = 0,
+  onResetMonthTasks,
+  onResetMonthChecks,
+  onResetMonthAll,
 }) => {
   const daysInMonth = getDaysInMonth(year, month);
   const weekGroups = useMemo(() => getWeekGroups(daysInMonth), [daysInMonth]);
@@ -86,6 +102,11 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
   const [fullScreenDayDate, setFullScreenDayDate] = useState<string | null>(null);
   const [modalOrigin, setModalOrigin] = useState<{ x: number; y: number } | null>(null);
   const [isModalClosing, setIsModalClosing] = useState<boolean>(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
+  const [quickAddDate, setQuickAddDate] = useState<string>(() =>
+    formatDateKey(year, month, todayDay > 0 ? todayDay : 1)
+  );
 
   // Smooth close handler matching video collapse
   const handleCloseModal = useCallback(() => {
@@ -369,6 +390,101 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
     }
   };
 
+  // Reorder task: move up or down in the date's task list
+  const handleMoveTask = (dateKey: string, taskId: string, direction: 'up' | 'down') => {
+    updateDailyTodos((prev) => {
+      const currentList = [...(prev[dateKey] || [])];
+      const index = currentList.findIndex((t) => t.id === taskId);
+      if (index === -1) return prev;
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= currentList.length) return prev;
+
+      const temp = currentList[index];
+      currentList[index] = currentList[targetIndex];
+      currentList[targetIndex] = temp;
+
+      return {
+        ...prev,
+        [dateKey]: currentList,
+      };
+    });
+  };
+
+  // Sort / order tasks for a specific date
+  const handleSortTasks = (
+    dateKey: string,
+    sortMode: 'priority' | 'incomplete-first' | 'completed-first' | 'alpha'
+  ) => {
+    updateDailyTodos((prev) => {
+      const currentList = [...(prev[dateKey] || [])];
+      if (sortMode === 'priority') {
+        const priorityWeight = { high: 3, medium: 2, low: 1 };
+        currentList.sort(
+          (a, b) =>
+            (priorityWeight[b.priority || 'medium'] || 2) -
+            (priorityWeight[a.priority || 'medium'] || 2)
+        );
+      } else if (sortMode === 'incomplete-first') {
+        currentList.sort((a, b) => Number(a.completed) - Number(b.completed));
+      } else if (sortMode === 'completed-first') {
+        currentList.sort((a, b) => Number(b.completed) - Number(a.completed));
+      } else if (sortMode === 'alpha') {
+        currentList.sort((a, b) => a.title.localeCompare(b.title));
+      }
+
+      return {
+        ...prev,
+        [dateKey]: currentList,
+      };
+    });
+  };
+
+  // Uncheck all tasks for a specific date in one click
+  const handleResetDayTasks = (dateKey: string) => {
+    updateDailyTodos((prev) => {
+      const currentList = prev[dateKey] || [];
+      return {
+        ...prev,
+        [dateKey]: currentList.map((t) => ({ ...t, completed: false })),
+      };
+    });
+  };
+
+  // Uncheck all tasks across the active week in one click
+  const handleResetWeekTasks = (weekNumber: number) => {
+    const group = weekGroups.find((g) => g.weekNumber === weekNumber);
+    if (!group) return;
+
+    updateDailyTodos((prev) => {
+      const next = { ...prev };
+      group.days.forEach((day) => {
+        const dKey = formatDateKey(year, month, day);
+        if (next[dKey]) {
+          next[dKey] = next[dKey].map((t) => ({ ...t, completed: false }));
+        }
+      });
+      return next;
+    });
+  };
+
+  // Uncheck all tasks across the entire month in one click
+  const handleResetMonthAllTasks = () => {
+    if (onResetMonthTasks) {
+      onResetMonthTasks();
+      return;
+    }
+    updateDailyTodos((prev) => {
+      const next = { ...prev };
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dKey = formatDateKey(year, month, d);
+        if (next[dKey]) {
+          next[dKey] = next[dKey].map((t) => ({ ...t, completed: false }));
+        }
+      }
+      return next;
+    });
+  };
+
   // Copy tasks from one date to an explicitly chosen target date only
   const handleConfirmCopy = (sourceDateKey: string) => {
     if (!copyTargetDate || copyTargetDate === sourceDateKey) {
@@ -452,10 +568,10 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                 Today's Daily Tasks
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-1">
+              <div className="text-3xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight mt-1">
                 {todayStats.percent}%
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
                 {todayStats.completed} of {todayStats.total} tasks completed today
               </div>
             </div>
@@ -469,10 +585,10 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                 Weekly Checklist Total
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-1">
+              <div className="text-3xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight mt-1">
                 {weekStats.totalTasks}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
                 Independent tasks scheduled in {activeWeek.label}
               </div>
             </div>
@@ -486,11 +602,11 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                 Weekly Velocity
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums mt-1">
+              <div className="text-3xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight mt-1">
                 {weekStats.percent}%
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {weekStats.completedTasks} / {weekStats.totalTasks} done across this week
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                {weekStats.completedTasks} of {weekStats.totalTasks} done across this week
               </div>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-xs">
@@ -504,13 +620,13 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2 font-heading">
               <span className="w-2.5 h-2.5 rounded-full bg-slate-900 dark:bg-white inline-block" />
               <span>
                 {standaloneView ? 'Task Bar & Daily Tasks' : 'Daily Tasks & Progress'}
               </span>
             </h2>
-            <span className="text-xs text-slate-600 dark:text-slate-300 font-mono tabular-nums px-2.5 py-0.5 rounded-full bg-white/70 dark:bg-white/10 border border-white/80 dark:border-white/15 shadow-2xs">
+            <span className="text-xs text-slate-600 dark:text-slate-300 font-num font-semibold px-2.5 py-0.5 rounded-full bg-white/70 dark:bg-white/10 border border-white/80 dark:border-white/15 shadow-2xs">
               {monthName} {year} · {activeWeek.label}
             </span>
           </div>
@@ -640,12 +756,38 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                 const match = weekGroups.find((g) => g.days.includes(todayDay));
                 if (match) setActiveWeekNumber(match.weekNumber);
               }}
-              className="px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-white/80 dark:border-white/15 backdrop-blur-md shadow-2xs transition-all flex items-center gap-1 shrink-0"
+              className="px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-white/80 dark:border-white/15 backdrop-blur-md shadow-2xs transition-all flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <Calendar className="w-3 h-3 text-slate-500 dark:text-slate-300" />
               <span>Today</span>
             </button>
           )}
+
+          {/* Quick Add Task Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const defaultDay = todayDay > 0 ? todayDay : displayedDays[0] || 1;
+              setQuickAddDate(formatDateKey(year, month, defaultDay));
+              setIsQuickAddOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-900 dark:text-white bg-white/80 dark:bg-white/15 hover:bg-white dark:hover:bg-white/25 border border-white/80 dark:border-white/20 shadow-2xs transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+            title="Quickly add a task"
+          >
+            <Plus className="w-3 h-3 text-slate-900 dark:text-white" />
+            <span>Add Task</span>
+          </button>
+
+          {/* Reset Tasks / Uncheck All Button */}
+          <button
+            type="button"
+            onClick={() => setIsResetModalOpen(true)}
+            className="px-3 py-1.5 rounded-full text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 shadow-2xs transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+            title={`Reset / uncheck all tasks for ${monthName} ${year}`}
+          >
+            <RotateCcw className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+            <span>Reset Tasks</span>
+          </button>
         </div>
       </div>
 
@@ -724,7 +866,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] font-mono tabular-nums text-slate-500 dark:text-slate-400 mt-0.5">
+                    <div className="text-[11px] font-num font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
                       {formattedDate}
                     </div>
                   </div>
@@ -833,13 +975,13 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
 
                     {/* Centered Percentage Value */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none pointer-events-none">
-                      <span className="text-base font-black text-slate-900 dark:text-white font-mono tabular-nums tracking-tight">
+                      <span className="text-base font-extrabold text-slate-900 dark:text-white font-num tracking-tight">
                         {percentage}%
                       </span>
                     </div>
                   </div>
 
-                  <span className="text-[10px] font-mono tabular-nums text-slate-500 dark:text-slate-300 mt-1">
+                  <span className="text-[11px] font-num font-semibold text-slate-500 dark:text-slate-300 mt-1">
                     {totalTasks > 0
                       ? `${completedCount} of ${totalTasks} done`
                       : 'No tasks yet'}
@@ -852,7 +994,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                     <span className="font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider text-[10px]">
                       Tasks
                     </span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white tabular-nums text-[11px]">
+                    <span className="font-num font-bold text-slate-900 dark:text-white text-[11px]">
                       {percentage}%
                     </span>
                   </div>
@@ -868,13 +1010,43 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                 <div className="flex-1 mb-3">
                   <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                     <span>{dayName}'s Tasks</span>
-                    <span className="font-mono">
-                      {completedCount}/{totalTasks}
-                    </span>
+                    <div className="flex items-center gap-1.5 font-num font-bold">
+                      {completedCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleResetDayTasks(dateKey);
+                          }}
+                          title={`Uncheck all tasks for ${dayName}`}
+                          className="text-[9px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-0.5 cursor-pointer lowercase tracking-normal font-sans"
+                        >
+                          <RotateCcw className="w-2.5 h-2.5" />
+                          <span>uncheck</span>
+                        </button>
+                      )}
+                      {tasks.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSortTasks(dateKey, 'priority');
+                          }}
+                          title="Order tasks by priority (High first)"
+                          className="text-[9px] font-bold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-0.5 cursor-pointer font-sans"
+                        >
+                          <ArrowUpDown className="w-2.5 h-2.5" />
+                          <span>order</span>
+                        </button>
+                      )}
+                      <span>
+                        {completedCount}/{totalTasks}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="space-y-2 relative overflow-visible px-1 py-1">
-                    {tasks.map((task) => {
+                    {tasks.map((task, taskIndex) => {
                       const isEditing =
                         editingTaskId === task.id && editingDateKey === dateKey;
 
@@ -976,8 +1148,36 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                             </div>
                           </div>
 
-                          {/* Task Action Controls (Edit & Delete) */}
-                          <div className="opacity-90 sm:opacity-0 group-hover/task:opacity-100 focus-within:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
+                          {/* Task Action Controls (Reorder, Edit & Delete) */}
+                          <div className="opacity-90 sm:opacity-0 group-hover/task:opacity-100 focus-within:opacity-100 flex items-center gap-0.5 transition-opacity shrink-0">
+                            {tasks.length > 1 && (
+                              <div className="flex items-center">
+                                <button
+                                  type="button"
+                                  disabled={taskIndex === 0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveTask(dateKey, task.id, 'up');
+                                  }}
+                                  title="Move task up"
+                                  className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-20 disabled:pointer-events-none hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                >
+                                  <ChevronUp className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={taskIndex === tasks.length - 1}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveTask(dateKey, task.id, 'down');
+                                  }}
+                                  title="Move task down"
+                                  className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-20 disabled:pointer-events-none hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                >
+                                  <ChevronDown className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            )}
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1146,9 +1346,9 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+          <div className="flex items-center gap-2 font-num font-semibold text-[11px] text-slate-600 dark:text-slate-300">
             <span>Completion Rate:</span>
-            <strong className="text-slate-950 dark:text-white">
+            <strong className="text-slate-950 dark:text-white font-extrabold">
               {weekStats.percent}%
             </strong>
           </div>
@@ -1159,6 +1359,28 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
             />
           </div>
         </div>
+      </div>
+
+      {/* 7. Organic Curvy Circular Task Velocity & Momentum Graph */}
+      <div className="mt-5">
+        <TaskCurvyGraph
+          year={year}
+          month={month}
+          monthName={monthName}
+          daysInMonth={daysInMonth}
+          activeWeekDays={displayedDays}
+          activeWeekLabel={activeWeek.label}
+          dailyTodos={dailyTodos}
+          todayDate={todayDate}
+          onSelectDay={(day) => {
+            const dateKey = formatDateKey(year, month, day);
+            const targetWeek = weekGroups.find((g) => g.days.includes(day));
+            if (targetWeek && targetWeek.weekNumber !== activeWeekNumber) {
+              setActiveWeekNumber(targetWeek.weekNumber);
+            }
+            setFullScreenDayDate(dateKey);
+          }}
+        />
       </div>
 
       {/* FULL-SCREEN EXPANDED DAY MODAL VIA PORTAL */}
@@ -1208,7 +1430,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                   style={{
                     transformOrigin: modalOrigin ? `${modalOrigin.x}px ${modalOrigin.y}px` : 'center center',
                   }}
-                  className={`relative w-[calc(100vw-12px)] sm:w-[95vw] h-[calc(100dvh-16px)] sm:h-[93vh] max-w-[1400px] flex flex-col rounded-2xl sm:rounded-4xl bg-white/95 dark:bg-[#12141c]/95 border border-white/80 dark:border-[#f6da7e]/40 shadow-[0_32px_80px_rgba(0,0,0,0.55)] dark:shadow-[0_0_60px_rgba(246,218,126,0.22)] backdrop-blur-2xl overflow-hidden select-text ${
+                  className={`relative w-[calc(100vw-12px)] sm:w-[95vw] h-[calc(100dvh-16px)] sm:h-[93vh] max-w-[1400px] flex flex-col rounded-2xl sm:rounded-4xl bg-white/95 dark:bg-[#12141c]/95 border border-white/80 dark:border-[#f6da7e]/40 shadow-[0_32px_80px_rgba(0,0,0,0.55)] dark:shadow-[0_0_60px_rgba(246,218,126,0.22)] backdrop-blur-2xl overflow-hidden select-text transform-gpu ${
                     isModalClosing ? 'task-modal-expand-out' : 'task-modal-expand-in'
                   }`}
                 >
@@ -1237,7 +1459,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] sm:text-sm font-mono text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                        <div className="text-[10px] sm:text-sm font-num font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                           {modalFormattedDate} • {modalTotalTasks} {modalTotalTasks === 1 ? 'task' : 'tasks'}
                         </div>
                       </div>
@@ -1303,7 +1525,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                             />
                           </svg>
                           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-lg font-black text-slate-900 dark:text-white font-mono tabular-nums">
+                            <span className="text-lg font-extrabold text-slate-900 dark:text-white font-num">
                               {modalPercentage}%
                             </span>
                           </div>
@@ -1312,10 +1534,10 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                           <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block tracking-wider">
                             Progress
                           </span>
-                          <span className="text-sm font-bold text-slate-900 dark:text-white block mt-0.5">
+                          <span className="text-sm font-extrabold text-slate-900 dark:text-white font-num block mt-0.5">
                             {modalCompletedCount} of {modalTotalTasks} Done
                           </span>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5 block">
+                          <span className="text-xs text-slate-500 dark:text-slate-400 font-num font-medium mt-0.5 block">
                             {modalTotalTasks - modalCompletedCount} remaining
                           </span>
                         </div>
@@ -1325,7 +1547,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                       <div className="p-4 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 flex flex-col justify-between">
                         <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
                           <span>Task Progress</span>
-                          <span className="font-mono">{modalPercentage}%</span>
+                          <span className="font-num font-extrabold">{modalPercentage}%</span>
                         </div>
                         <div className="w-full h-3 rounded-full bg-slate-200/80 dark:bg-black/60 overflow-hidden my-2">
                           <div
@@ -1333,7 +1555,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                             style={{ width: `${modalPercentage}%` }}
                           />
                         </div>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-num font-medium">
                           {modalIsAllCompleted
                             ? 'All tasks completed 🎉'
                             : modalTotalTasks > 0
@@ -1441,22 +1663,46 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
 
                     {/* COMPLETE FULL-WIDTH TASK LIST */}
                     <div className="space-y-3 task-cascade-delay-2">
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider px-1">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider px-1 flex-wrap gap-2">
                         <span>Checklist ({modalCompletedCount}/{modalTotalTasks} completed)</span>
-                        {!isAddingModal && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAddingTaskForDate(fullScreenDayDate);
-                              setNewTaskTitle('');
-                              setNewTaskDesc('');
-                              setNewTaskPriority('medium');
-                            }}
-                            className="text-xs font-bold text-slate-900 dark:text-[#f6da7e] hover:underline flex items-center gap-1 cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Add Task
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2.5">
+                          {modalCompletedCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => handleResetDayTasks(fullScreenDayDate)}
+                              className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                              title="Uncheck all tasks for this day"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Uncheck All</span>
+                            </button>
+                          )}
+                          {modalTasks.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleSortTasks(fullScreenDayDate, 'priority')}
+                              className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 cursor-pointer"
+                              title="Order tasks by priority (High to Low)"
+                            >
+                              <ArrowUpDown className="w-3 h-3" />
+                              <span>Sort Priority</span>
+                            </button>
+                          )}
+                          {!isAddingModal && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddingTaskForDate(fullScreenDayDate);
+                                setNewTaskTitle('');
+                                setNewTaskDesc('');
+                                setNewTaskPriority('medium');
+                              }}
+                              className="text-xs font-bold text-slate-900 dark:text-[#f6da7e] hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Add Task
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {modalTasks.length === 0 && !isAddingModal && (
@@ -1484,7 +1730,7 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                       )}
 
                       <div className="space-y-2.5">
-                        {modalTasks.map((task) => {
+                        {modalTasks.map((task, modalIndex) => {
                           const isEditing = editingTaskId === task.id && editingDateKey === fullScreenDayDate;
 
                           if (isEditing) {
@@ -1597,8 +1843,30 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
                                 </div>
                               </div>
 
-                              {/* Action controls */}
+                              {/* Action controls (Reorder, Edit & Delete) */}
                               <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                                {modalTasks.length > 1 && (
+                                  <div className="flex items-center gap-0.5 mr-0.5">
+                                    <button
+                                      type="button"
+                                      disabled={modalIndex === 0}
+                                      onClick={() => handleMoveTask(fullScreenDayDate, task.id, 'up')}
+                                      title="Move task up"
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-20 disabled:pointer-events-none hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                    >
+                                      <ChevronUp className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={modalIndex === modalTasks.length - 1}
+                                      onClick={() => handleMoveTask(fullScreenDayDate, task.id, 'down')}
+                                      title="Move task down"
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-20 disabled:pointer-events-none hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                    >
+                                      <ChevronDown className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => handleStartEdit(fullScreenDayDate, task)}
@@ -1625,9 +1893,9 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
 
                   {/* MODAL FOOTER */}
                   <div className="px-6 sm:px-8 py-3.5 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between text-xs bg-white/40 dark:bg-white/[0.02]">
-                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-mono">
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-medium">
                       <span>Press</span>
-                      <kbd className="px-1.5 py-0.5 rounded-md bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-mono text-[11px]">
+                      <kbd className="px-1.5 py-0.5 rounded-md bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-num font-bold text-[11px]">
                         ESC
                       </kbd>
                       <span>or click outside to close</span>
@@ -1647,6 +1915,174 @@ export const DailyTaskProgressSection: React.FC<DailyTaskProgressSectionProps> =
           })(),
           document.body
         )}
+
+      {/* Quick Add Task Modal (Opened from Header '+ Add Task' button) */}
+      {isQuickAddOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quick-add-task-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => setIsQuickAddOpen(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl p-5 sm:p-6 tourera-glass-card border border-white/80 dark:border-white/15 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200 space-y-4"
+            >
+              {/* Top Liquid Specular Glint */}
+              <div className="absolute top-0 inset-x-6 h-1 rounded-full bg-gradient-to-r from-transparent via-white/80 dark:via-white/50 to-transparent pointer-events-none" />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-950 flex items-center justify-center font-bold">
+                    <Plus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3
+                      id="quick-add-task-title"
+                      className="text-base font-bold text-slate-900 dark:text-white"
+                    >
+                      Add New Daily Task
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Add to a specific date's independent checklist
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsQuickAddOpen(false)}
+                  className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Target Date Picker */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 tracking-wider block mb-1.5">
+                  Select Target Date
+                </label>
+                <select
+                  value={quickAddDate}
+                  onChange={(e) => setQuickAddDate(e.target.value)}
+                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl bg-white/90 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-white/10"
+                >
+                  {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
+                    const dKey = formatDateKey(year, month, d);
+                    const { fullName: dName } = getDayOfWeek(year, month, d);
+                    const isTodayItem = d === todayDay;
+                    return (
+                      <option key={dKey} value={dKey}>
+                        {dName}, {String(d).padStart(2, '0')} {monthName} {year}
+                        {isTodayItem ? ' (Today)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Task Title Input */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 tracking-wider block mb-1.5">
+                  Task Title
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newTaskTitle.trim()) {
+                      handleSaveNewTask(quickAddDate);
+                      setIsQuickAddOpen(false);
+                    }
+                  }}
+                  placeholder="Task title (e.g. Morning stretch, complete review, reply to emails)..."
+                  className="w-full text-sm font-medium px-3.5 py-2 rounded-xl bg-white/90 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-white/10 focus:outline-hidden"
+                />
+              </div>
+
+              {/* Task Description */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 tracking-wider block mb-1.5">
+                  Notes / Details (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={newTaskDesc}
+                  onChange={(e) => setNewTaskDesc(e.target.value)}
+                  placeholder="Additional context or notes..."
+                  className="w-full text-xs font-normal px-3.5 py-2 rounded-xl bg-white/90 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-white/10 focus:outline-hidden resize-none"
+                />
+              </div>
+
+              {/* Priority and Action */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 dark:border-white/10">
+                <select
+                  value={newTaskPriority}
+                  onChange={(e) =>
+                    setNewTaskPriority(e.target.value as 'low' | 'medium' | 'high')
+                  }
+                  className="text-xs px-2.5 py-1.5 rounded-xl bg-white/90 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-white/10"
+                >
+                  <option value="low">Low Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="high">High Priority</option>
+                </select>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickAddOpen(false)}
+                    className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!newTaskTitle.trim()}
+                    onClick={() => {
+                      handleSaveNewTask(quickAddDate);
+                      setIsQuickAddOpen(false);
+                    }}
+                    className="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-950 disabled:opacity-40 cursor-pointer shadow-sm"
+                  >
+                    Add Task
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Reset Ticks Confirmation Modal */}
+      <ResetTicksModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        monthName={monthName}
+        year={year}
+        habitChecksCount={habitChecksCount}
+        completedTasksCount={completedTasksCount}
+        initialScope="tasks-only"
+        onConfirmReset={(scope: ResetScope) => {
+          if (scope === 'tasks-only') {
+            if (onResetMonthTasks) onResetMonthTasks();
+            else handleResetMonthAllTasks();
+          } else if (scope === 'habits-only') {
+            onResetMonthChecks?.();
+          } else if (scope === 'all') {
+            if (onResetMonthAll) onResetMonthAll();
+            else {
+              onResetMonthChecks?.();
+              handleResetMonthAllTasks();
+            }
+          }
+        }}
+      />
     </section>
   );
 };

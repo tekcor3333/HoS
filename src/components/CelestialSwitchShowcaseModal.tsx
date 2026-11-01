@@ -49,7 +49,7 @@ export const CelestialSwitchShowcaseModal: React.FC<CelestialSwitchShowcaseModal
         </div>
 
         {/* Status Indicators */}
-        <div className="flex items-center gap-6 text-xs font-mono text-slate-200 mb-6">
+        <div className="flex items-center gap-6 text-xs font-medium text-slate-200 mb-6">
           <div className="flex items-center gap-2">
             <span className="text-slate-300">Current Mode:</span>
             <span className="font-bold text-white px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20">

@@ -20,7 +20,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
   return (
     <section id="progress-dashboard" className="mb-8">
       <div className="flex items-center justify-between mb-3.5">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+        <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2 font-heading">
           <span>System Metrics</span>
         </h2>
       </div>
@@ -38,7 +38,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             <div className="text-sm min-[360px]:text-base sm:text-lg font-extrabold text-slate-900 dark:text-white truncate">
               {monthName}
             </div>
-            <div className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-300 font-mono tabular-nums mt-0.5 truncate">
+            <div className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-300 font-num font-medium mt-0.5 truncate">
               {year} · {stats.totalDaysInMonth}d
             </div>
           </div>
@@ -53,10 +53,10 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             </div>
           </div>
           <div className="min-w-0">
-            <div className="text-lg min-[360px]:text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums">
+            <div className="text-xl min-[360px]:text-2xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight">
               {stats.totalHabits}
             </div>
-            <div className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-300 mt-0.5 truncate">
+            <div className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-300 mt-0.5 truncate font-medium">
               Daily routines
             </div>
           </div>
@@ -71,10 +71,10 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             </div>
           </div>
           <div className="min-w-0">
-            <div className="text-lg min-[360px]:text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums">
+            <div className="text-xl min-[360px]:text-2xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight">
               {stats.totalCompletedCheckins}
             </div>
-            <div className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-300 font-mono tabular-nums mt-0.5 truncate">
+            <div className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-300 font-num font-medium mt-0.5 truncate">
               of {stats.totalPossibleCheckins} max
             </div>
           </div>
@@ -84,12 +84,12 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         <div className="tourera-glass-card rounded-2xl sm:rounded-3xl p-2.5 min-[360px]:p-3 sm:p-4.5 flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-200">Completion</span>
-            <span className="text-[10px] min-[360px]:text-[11px] sm:text-xs font-mono font-bold text-slate-900 dark:text-white">
+            <span className="text-[10px] min-[360px]:text-[11px] sm:text-xs font-num font-bold text-slate-900 dark:text-white">
               {stats.overallPercentage.toFixed(1)}%
             </span>
           </div>
           <div className="min-w-0">
-            <div className="text-lg min-[360px]:text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums">
+            <div className="text-xl min-[360px]:text-2xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight">
               {stats.overallPercentage.toFixed(1)}%
             </div>
             <div className="w-full tourera-progress-track rounded-full h-1.5 sm:h-2 mt-2 overflow-hidden p-0.5">
@@ -110,10 +110,10 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             </div>
           </div>
           <div className="min-w-0">
-            <div className="text-lg min-[360px]:text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums flex items-baseline gap-1">
+            <div className="text-xl min-[360px]:text-2xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight flex items-baseline gap-1">
               <span>{bestHabit ? `${bestHabit.currentStreak}d` : '0d'}</span>
             </div>
-            <div className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-300 truncate mt-0.5" title={bestHabit?.habit.name}>
+            <div className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-300 truncate mt-0.5 font-medium" title={bestHabit?.habit.name}>
               {bestHabit ? bestHabit.habit.name : 'Start streak'}
             </div>
           </div>
@@ -128,10 +128,10 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             </div>
           </div>
           <div className="min-w-0">
-            <div className="text-lg min-[360px]:text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums">
+            <div className="text-xl min-[360px]:text-2xl font-extrabold text-slate-900 dark:text-white font-num tracking-tight">
               {stats.monthlyGoal.targetPercentage}%
             </div>
-            <div className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-300 truncate mt-0.5">
+            <div className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-300 truncate mt-0.5 font-medium">
               {stats.overallPercentage >= stats.monthlyGoal.targetPercentage
                 ? 'Goal Achieved 🎯'
                 : `${(stats.monthlyGoal.targetPercentage - stats.overallPercentage).toFixed(1)}% to target`}
