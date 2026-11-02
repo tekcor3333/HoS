@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Habit, DailyStat } from '../types';
 import { getDayOfWeek, getWeekGroups } from '../utils/dateUtils';
 import { Sparkles, TrendingUp, Flame, Award, Check } from 'lucide-react';
@@ -88,6 +88,28 @@ export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
 }) => {
   const [viewScope, setViewScope] = useState<'week' | 'month'>('month');
   const [hoveredPoint, setHoveredPoint] = useState<CurvyPoint | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(1000);
+
+  // ResizeObserver to dynamically measure container width so SVG viewBox matches 1:1 with zero letterboxing
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const w = containerRef.current.clientWidth;
+        if (w > 0) setContainerWidth(w);
+      }
+    };
+    updateWidth();
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        if (w > 0) setContainerWidth(w);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const isCurrentMonth =
     todayDate.getFullYear() === year && todayDate.getMonth() + 1 === month;
@@ -111,21 +133,22 @@ export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
     return Array.from({ length: daysInMonth }, (_, i) => i + 1);
   }, [viewScope, activeWeekGroup, daysInMonth]);
 
-  // SVG dimensions
-  const svgWidth = 920;
+  // Dimensions for SVG canvas - dynamically match measured width
+  const svgWidth = Math.max(320, containerWidth);
   const svgHeight = 210;
-  const padLeft = 40;
-  const padRight = 40;
-  const padTop = 26;
-  const padBottom = 34;
+  const padTop = 24;
+  const padBottom = 28;
 
-  const usableWidth = svgWidth - padLeft - padRight;
   const usableHeight = svgHeight - padTop - padBottom;
   const baselineY = svgHeight - padBottom;
 
   // Map days to curvy coordinate points
+  // Each day occupies colWidth = svgWidth / targetDays.length
+  // Center of each day's column is (idx + 0.5) * colWidth, aligning 1:1 with the bottom pills
   const points: CurvyPoint[] = useMemo(() => {
     if (targetDays.length === 0) return [];
+    const count = targetDays.length;
+    const colWidth = svgWidth / count;
 
     return targetDays.map((day, idx) => {
       const stat = dailyStats.find((s) => s.day === day);
@@ -146,11 +169,7 @@ export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
       const completed = completedHabits.length;
       const percent = total > 0 ? Math.round((completed / total) * 100) : (stat?.percentage ?? 0);
 
-      const x =
-        targetDays.length === 1
-          ? svgWidth / 2
-          : padLeft + (idx / (targetDays.length - 1)) * usableWidth;
-
+      const x = (idx + 0.5) * colWidth;
       const y = baselineY - (percent / 100) * usableHeight;
 
       return {
@@ -167,7 +186,7 @@ export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
         pendingHabits,
       };
     });
-  }, [targetDays, habits, checks, dailyStats, year, month, todayDay, usableWidth, usableHeight, baselineY, svgWidth]);
+  }, [targetDays, habits, checks, dailyStats, year, month, todayDay, usableHeight, baselineY, svgWidth]);
 
   // Summary metrics for current scope
   const summaryMetrics = useMemo(() => {
@@ -213,10 +232,35 @@ export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
     });
   }, [points, baselineY]);
 
-  // Generate paths
-  const mainSplinePath = useMemo(() => generateCurvySplinePath(points, 0.35), [points]);
-  const mainAreaPath = useMemo(() => generateCurvyAreaPath(points, baselineY, 0.35), [points, baselineY]);
-  const ambientSplinePath = useMemo(() => generateCurvySplinePath(ambientPoints, 0.45), [ambientPoints]);
+  // Extended path points stretching from extreme left edge (x: 0) to extreme right edge (x: svgWidth)
+  const pathPoints = useMemo(() => {
+    if (points.length === 0) return [];
+    if (points.length === 1) return points;
+    const first = points[0];
+    const last = points[points.length - 1];
+    return [
+      { ...first, x: 0 },
+      ...points,
+      { ...last, x: svgWidth },
+    ];
+  }, [points, svgWidth]);
+
+  const ambientPathPoints = useMemo(() => {
+    if (ambientPoints.length === 0) return [];
+    if (ambientPoints.length === 1) return ambientPoints;
+    const first = ambientPoints[0];
+    const last = ambientPoints[ambientPoints.length - 1];
+    return [
+      { ...first, x: 0 },
+      ...ambientPoints,
+      { ...last, x: svgWidth },
+    ];
+  }, [ambientPoints, svgWidth]);
+
+  // Generate paths stretching from edge to edge
+  const mainSplinePath = useMemo(() => generateCurvySplinePath(pathPoints, 0.35), [pathPoints]);
+  const mainAreaPath = useMemo(() => generateCurvyAreaPath(pathPoints, baselineY, 0.35), [pathPoints, baselineY]);
+  const ambientSplinePath = useMemo(() => generateCurvySplinePath(ambientPathPoints, 0.45), [ambientPathPoints]);
 
   // Circular Completion Ring Geometry
   const ringRadius = 32;
@@ -250,13 +294,28 @@ export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Organic undulating curves mapping your daily habit consistency across {viewScope === 'week' ? activeWeekGroup.label : `${monthName} ${year}`}
+              Organic undulating curves mapping your daily habit consistency across {viewScope === 'week' ? activeWeekGroup.label : `${monthName} (Day 1 to ${daysInMonth})`}
             </p>
           </div>
         </div>
 
-        {/* View Scope Capsule Switcher (Week Flow vs Month Horizon) */}
+        {/* View Scope Capsule Switcher (Full Month 1–last day vs Week Flow) */}
         <div className="flex items-center gap-1.5 self-start md:self-auto p-1 rounded-2xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewScope('month')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+              viewScope === 'month'
+                ? 'bg-white dark:bg-white/20 text-slate-950 dark:text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
+            }`}
+          >
+            <span>Full Month</span>
+            <span className="text-[10px] font-num font-bold px-1.5 py-0.2 rounded-md bg-slate-200/60 dark:bg-white/10">
+              d1–d{daysInMonth}
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={() => setViewScope('week')}
@@ -269,21 +328,6 @@ export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
             <span>This Week</span>
             <span className="text-[10px] font-num font-bold px-1.5 py-0.2 rounded-md bg-slate-200/60 dark:bg-white/10">
               {activeWeekGroup.label}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setViewScope('month')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-              viewScope === 'month'
-                ? 'bg-white dark:bg-white/20 text-slate-950 dark:text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
-            }`}
-          >
-            <span>Full Month</span>
-            <span className="text-[10px] font-num font-bold px-1.5 py-0.2 rounded-md bg-slate-200/60 dark:bg-white/10">
-              {daysInMonth}d
             </span>
           </button>
         </div>
@@ -403,19 +447,11 @@ export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
 
       {/* 3. The Curvy Circular SVG Wave Canvas */}
       <div className="w-full bg-white/80 dark:bg-slate-950/70 rounded-2xl p-3 sm:p-4 border border-white dark:border-white/10 shadow-inner relative overflow-hidden">
-        {/* Horizontal reference lines */}
-        <div className="absolute inset-x-4 inset-y-4 flex flex-col justify-between pointer-events-none opacity-20 dark:opacity-25 font-num font-bold">
-          <div className="w-full border-b border-dashed border-slate-600 dark:border-slate-300 flex justify-end pr-2 text-[9px]">100%</div>
-          <div className="w-full border-b border-dashed border-slate-600 dark:border-slate-300 flex justify-end pr-2 text-[9px]">75%</div>
-          <div className="w-full border-b border-dashed border-slate-600 dark:border-slate-300 flex justify-end pr-2 text-[9px]">50%</div>
-          <div className="w-full border-b border-dashed border-slate-600 dark:border-slate-300 flex justify-end pr-2 text-[9px]">25%</div>
-          <div className="w-full border-b border-slate-600 dark:border-slate-300 flex justify-end pr-2 text-[9px]">0%</div>
-        </div>
-
-        <svg
-          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-          className="w-full h-44 sm:h-52 overflow-visible relative z-10 touch-pan-x"
-        >
+        <div ref={containerRef} className="w-full relative">
+          <svg
+            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+            className="w-full h-44 sm:h-52 overflow-visible relative z-10 touch-pan-x block"
+          >
           <defs>
             {/* Curvy Fluid Gradient Area Fill */}
             <linearGradient id="habitCurvyGlowFill" x1="0" y1="0" x2="0" y2="1">
@@ -430,6 +466,37 @@ export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
           </defs>
+
+          {/* Grid lines and percentage markers placed mathematically inside SVG */}
+          {[
+            { label: '100%', y: padTop },
+            { label: '75%', y: padTop + usableHeight * 0.25 },
+            { label: '50%', y: padTop + usableHeight * 0.5 },
+            { label: '25%', y: padTop + usableHeight * 0.75 },
+            { label: '0%', y: baselineY },
+          ].map((grid) => (
+            <g key={grid.label} className="pointer-events-none opacity-25 dark:opacity-30">
+              <line
+                x1={0}
+                y1={grid.y}
+                x2={Math.max(0, svgWidth - 38)}
+                y2={grid.y}
+                stroke="currentColor"
+                strokeDasharray={grid.label === '0%' ? undefined : '4 4'}
+                strokeWidth={grid.label === '0%' ? 1.5 : 1}
+                className="text-slate-500 dark:text-slate-400"
+              />
+              <text
+                x={svgWidth - 4}
+                y={grid.y + 3}
+                textAnchor="end"
+                fill="currentColor"
+                className="text-[9px] font-num font-bold text-slate-500 dark:text-slate-400 select-none"
+              >
+                {grid.label}
+              </text>
+            </g>
+          ))}
 
           {/* 1. Underlying Ambient Wave (Soft Fluid Motion Rhythm) */}
           {ambientSplinePath && (
@@ -537,98 +604,101 @@ export const HabitCurvyGraph: React.FC<HabitCurvyGraphProps> = ({
           })}
         </svg>
 
-        {/* 4. Interactive Floating Tooltip on Node Hover */}
-        {hoveredPoint && (
-          <div
-            className="absolute z-30 pointer-events-none transform -translate-x-1/2 -translate-y-full transition-all duration-150"
-            style={{
-              left: `${(hoveredPoint.x / svgWidth) * 100}%`,
-              top: `${Math.max(12, (hoveredPoint.y / svgHeight) * 100 - 10)}%`,
-            }}
-          >
-            <div className="bg-slate-900 text-white dark:bg-white dark:text-slate-950 p-2.5 rounded-2xl shadow-2xl border border-white/20 dark:border-black/20 text-xs min-w-[160px] backdrop-blur-md">
-              <div className="flex items-center justify-between gap-2 border-b border-white/15 dark:border-black/15 pb-1.5 mb-1.5">
-                <span className="font-extrabold uppercase tracking-wider text-[10px]">
-                  {hoveredPoint.dayName} {hoveredPoint.day} {monthName.slice(0, 3)}
-                </span>
-                <span className="font-num font-extrabold text-amber-300 dark:text-amber-700">
-                  {hoveredPoint.percent}%
-                </span>
-              </div>
-              <div className="text-[11px] font-medium flex items-center justify-between">
-                <span>Completed:</span>
-                <strong className="font-num font-bold">{hoveredPoint.completed} of {hoveredPoint.total} habits</strong>
-              </div>
+          {/* 4. Interactive Floating Tooltip on Node Hover */}
+          {hoveredPoint && (
+            <div
+              className="absolute z-30 pointer-events-none transform -translate-x-1/2 -translate-y-full transition-all duration-150"
+              style={{
+                left: `${Math.min(92, Math.max(8, (hoveredPoint.x / svgWidth) * 100))}%`,
+                top: `${Math.max(8, (hoveredPoint.y / svgHeight) * 100 - 8)}%`,
+              }}
+            >
+              <div className="bg-slate-900 text-white dark:bg-white dark:text-slate-950 p-2.5 rounded-2xl shadow-2xl border border-white/20 dark:border-black/20 text-xs min-w-[160px] backdrop-blur-md">
+                <div className="flex items-center justify-between gap-2 border-b border-white/15 dark:border-black/15 pb-1.5 mb-1.5">
+                  <span className="font-extrabold uppercase tracking-wider text-[10px]">
+                    {hoveredPoint.dayName} {hoveredPoint.day} {monthName.slice(0, 3)}
+                  </span>
+                  <span className="font-num font-extrabold text-amber-300 dark:text-amber-700">
+                    {hoveredPoint.percent}%
+                  </span>
+                </div>
+                <div className="text-[11px] font-medium flex items-center justify-between">
+                  <span>Completed:</span>
+                  <strong className="font-num font-bold">{hoveredPoint.completed} of {hoveredPoint.total} habits</strong>
+                </div>
 
-              {/* Habits preview */}
-              <div className="mt-1.5 pt-1.5 border-t border-white/10 dark:border-black/10 text-[10px] space-y-1 opacity-90 max-w-[200px]">
-                {hoveredPoint.completedHabits.slice(0, 3).map((h) => (
-                  <div key={h.id} className="truncate flex items-center gap-1.5 text-emerald-400 dark:text-emerald-600">
-                    <Check className="w-3 h-3 stroke-[3] shrink-0" />
-                    <span className="truncate">{h.emoji} {h.name}</span>
-                  </div>
-                ))}
-                {hoveredPoint.pendingHabits.slice(0, 2).map((h) => (
-                  <div key={h.id} className="truncate flex items-center gap-1.5 text-slate-400">
-                    <span className="w-3 text-center shrink-0">○</span>
-                    <span className="truncate">{h.emoji} {h.name}</span>
-                  </div>
-                ))}
-                {hoveredPoint.total > 5 && (
-                  <div className="text-[9px] opacity-70 italic font-num">
-                    +{hoveredPoint.total - 5} more habits
-                  </div>
-                )}
+                {/* Habits preview */}
+                <div className="mt-1.5 pt-1.5 border-t border-white/10 dark:border-black/10 text-[10px] space-y-1 opacity-90 max-w-[200px]">
+                  {hoveredPoint.completedHabits.slice(0, 3).map((h) => (
+                    <div key={h.id} className="truncate flex items-center gap-1.5 text-emerald-400 dark:text-emerald-600">
+                      <Check className="w-3 h-3 stroke-[3] shrink-0" />
+                      <span className="truncate">{h.emoji} {h.name}</span>
+                    </div>
+                  ))}
+                  {hoveredPoint.pendingHabits.slice(0, 2).map((h) => (
+                    <div key={h.id} className="truncate flex items-center gap-1.5 text-slate-400">
+                      <span className="w-3 text-center shrink-0">○</span>
+                      <span className="truncate">{h.emoji} {h.name}</span>
+                    </div>
+                  ))}
+                  {hoveredPoint.total > 5 && (
+                    <div className="text-[9px] opacity-70 italic font-num">
+                      +{hoveredPoint.total - 5} more habits
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+          )}
+
+          {/* 5. Bottom Circular Day Pills Strip */}
+          <div className="flex justify-between items-center px-0 pt-2 border-t border-slate-200/60 dark:border-white/10 text-[10px] font-num font-bold text-slate-500 dark:text-slate-400 w-full">
+            {points.map((pt, idx) => {
+              const showLabel =
+                viewScope === 'week' ||
+                idx === 0 ||
+                idx === points.length - 1 ||
+                pt.day % 5 === 0 ||
+                pt.isToday;
+
+              return (
+                <button
+                  key={pt.day}
+                  type="button"
+                  onClick={() => onSelectDay && onSelectDay(pt.day)}
+                  className={`flex flex-col items-center gap-0.5 transition-colors cursor-pointer ${
+                    pt.isToday
+                      ? 'text-slate-950 dark:text-[#f6da7e] font-black'
+                      : hoveredPoint?.day === pt.day
+                      ? 'text-slate-900 dark:text-white font-bold'
+                      : 'hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  style={{ width: `${100 / points.length}%` }}
+                >
+                  {showLabel ? (
+                    <>
+                      <span className="text-[9px] uppercase leading-tight font-sans">
+                        {pt.dayName}
+                      </span>
+                      <span
+                        className={`text-[10px] px-1 py-0.2 rounded-md ${
+                          pt.day === 1 || pt.day === daysInMonth
+                            ? 'bg-slate-900/10 dark:bg-white/15 text-slate-950 dark:text-white font-black ring-1 ring-slate-900/20 dark:ring-white/20'
+                            : pt.isToday
+                            ? 'bg-slate-900 text-white dark:bg-[#f6da7e] dark:text-slate-950 font-black'
+                            : ''
+                        }`}
+                      >
+                        {pt.day}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-white/20 my-1.5" />
+                  )}
+                </button>
+              );
+            })}
           </div>
-        )}
-
-        {/* 5. Bottom Circular Day Pills Strip */}
-        <div className="flex justify-between items-center px-1 pt-2 border-t border-slate-200/60 dark:border-white/10 text-[10px] font-num font-bold text-slate-500 dark:text-slate-400">
-          {points.map((pt, idx) => {
-            const showLabel =
-              viewScope === 'week' ||
-              idx === 0 ||
-              idx === points.length - 1 ||
-              pt.day % 5 === 0 ||
-              pt.isToday;
-
-            return (
-              <button
-                key={pt.day}
-                type="button"
-                onClick={() => onSelectDay && onSelectDay(pt.day)}
-                className={`flex flex-col items-center gap-0.5 transition-colors cursor-pointer ${
-                  pt.isToday
-                    ? 'text-slate-950 dark:text-[#f6da7e] font-black'
-                    : hoveredPoint?.day === pt.day
-                    ? 'text-slate-900 dark:text-white font-bold'
-                    : 'hover:text-slate-900 dark:hover:text-white'
-                }`}
-                style={{ width: `${100 / points.length}%` }}
-              >
-                {showLabel ? (
-                  <>
-                    <span className="text-[9px] uppercase leading-tight font-sans">
-                      {pt.dayName}
-                    </span>
-                    <span
-                      className={`text-[10px] px-1 py-0.2 rounded-md ${
-                        pt.isToday
-                          ? 'bg-slate-900 text-white dark:bg-[#f6da7e] dark:text-slate-950 font-black'
-                          : ''
-                      }`}
-                    >
-                      {pt.day}
-                    </span>
-                  </>
-                ) : (
-                  <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-white/20 my-1.5" />
-                )}
-              </button>
-            );
-          })}
         </div>
       </div>
     </div>

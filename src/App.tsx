@@ -473,7 +473,7 @@ export default function App() {
     [queueCloudSync]
   );
 
-  const todayDate = useMemo(() => new Date(2026, 8, 23), []);
+  const todayDate = useMemo(() => new Date(), []);
   const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
   const monthName = MONTH_NAMES[month - 1];
 
